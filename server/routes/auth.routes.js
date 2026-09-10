@@ -157,8 +157,8 @@ authRouter.post('/register', async (req, res) => {
   res.status(201).json({ success: true, user: newUser });
 });
 
-// 5. Editors Roster Listing
-authRouter.get('/editors', async (req, res) => {
+// 5. Editors Roster Listing (Admin Only — exposes staff names, emails, workload)
+authRouter.get('/editors', requireRole('admin'), async (req, res) => {
   const { rows: editors } = await query(`
     SELECT
       u.id, u.name, u.email, u.role, u.specialty, u.max_capacity AS "maxCapacity",
@@ -179,6 +179,10 @@ authRouter.post('/editors', requireRole('admin'), async (req, res) => {
     return res.status(400).json({ error: 'Name and email are required' });
   }
 
+  if (password && String(password).length < 10) {
+    return res.status(400).json({ error: 'Editor password must be at least 10 characters.' });
+  }
+
   const normalizedEmail = email.trim().toLowerCase();
   const existing = await queryOne('SELECT id FROM users WHERE lower(email) = $1', [normalizedEmail]);
   if (existing) {
@@ -187,7 +191,8 @@ authRouter.post('/editors', requireRole('admin'), async (req, res) => {
 
   const editorId = `editor-${Date.now().toString().slice(-4)}`;
   const now = new Date().toISOString();
-  const defaultPassword = password || `TP-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  // Auto-generated key when the admin doesn't supply one: ~72 bits of entropy.
+  const defaultPassword = password || `TP-${crypto.randomBytes(9).toString('base64url')}`;
   const passHash = hashPassword(defaultPassword);
   const avatarUrl = avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200`;
 

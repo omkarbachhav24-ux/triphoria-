@@ -3,7 +3,8 @@ import { History, Shield, Lock, Search, Filter, ArrowLeft, ArrowRight } from 'lu
 import { useAuditLog } from '../../context/AuditLogContext';
 
 export const AuditLogsPage = ({ onNavigate }) => {
-  const { logs } = useAuditLog();
+  // AuditLogContext exposes `auditLogs`; alias it locally as `logs`.
+  const { auditLogs: logs = [] } = useAuditLog();
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
 
@@ -119,7 +120,7 @@ export const AuditLogsPage = ({ onNavigate }) => {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-white font-medium whitespace-nowrap">
-                      {log.entityType ? `${log.entityType} / ` : ''}{log.entityId}
+                      {(log.entity || log.entityType) ? `${log.entity || log.entityType} / ` : ''}{log.entityId}
                     </td>
                     <td className="py-3 px-4 text-[#A1A1A6] whitespace-nowrap">
                       {log.actor}

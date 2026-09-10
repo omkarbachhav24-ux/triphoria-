@@ -41,8 +41,8 @@ export const CMSManagerPage = ({ onNavigate }) => {
     category: 'Commercial & Brand',
     format: '4K DCI 60FPS',
     runtime: '01:00',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&q=80&w=1000',
+    videoUrl: '',
+    thumbnail: '',
     description: '',
     isPublished: true,
     camera: 'Sony FX3 S-Log3 4K',
@@ -55,11 +55,11 @@ export const CMSManagerPage = ({ onNavigate }) => {
   const [editingSocial, setEditingSocial] = useState(null);
   const [socialForm, setSocialForm] = useState({
     platform: 'Instagram Reel',
-    url: 'https://www.instagram.com',
+    url: '',
     title: '',
     caption: '',
-    thumbnail: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?auto=format&fit=crop&q=80&w=600',
-    likes: '2.5k',
+    thumbnail: '',
+    likes: '',
     isPublished: true
   });
 
@@ -83,10 +83,10 @@ export const CMSManagerPage = ({ onNavigate }) => {
       runtime: '01:00',
       socialProvider: 'instagram',
       socialUrl: '',
-      playbackUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      playbackUrl: '',
+      videoUrl: '',
       aspectRatio: '16:9',
-      thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&q=80&w=1000',
+      thumbnail: '',
       description: '',
       isPublished: true,
       camera: 'Cinema 4K',
@@ -148,11 +148,11 @@ export const CMSManagerPage = ({ onNavigate }) => {
   const openNewSocialModal = () => {
     setSocialForm({
       platform: 'Instagram Reel',
-      url: 'https://www.instagram.com',
+      url: '',
       title: '',
       caption: '',
       thumbnail: '',
-      likes: '1.8k',
+      likes: '',
       isPublished: true
     });
     setEditingSocial('NEW');

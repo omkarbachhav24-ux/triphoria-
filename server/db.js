@@ -160,6 +160,29 @@ async function seedInitialData() {
     );
   }
 
+  // Demo fixtures (editors, customers, orders, portfolio, social) are seeded
+  // only outside production. Production starts with just the admin account;
+  // real editors/customers are onboarded through the app, so the database
+  // never contains placeholder people, fake orders, or sample-video "deliveries".
+  // Set SEED_DEMO_DATA=true to opt in on a non-prod-like environment.
+  const seedDemo =
+    process.env.NODE_ENV !== 'production' || process.env.SEED_DEMO_DATA === 'true';
+
+  if (!seedDemo) {
+    await pool.query(
+      `INSERT INTO audit_events (id, actor_id, actor_role, action, entity_type, entity_id, details, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        `audit-${Date.now()}`,
+        'system', 'system', 'DATABASE_INITIALIZED', 'System', 'triphoria-postgres',
+        'Production database initialized (admin only; demo fixtures skipped).',
+        now
+      ]
+    );
+    console.log('[DB] Production seed: admin only. Demo fixtures skipped.');
+    return;
+  }
+
   // 2. Seed Editors
   for (const ed of INITIAL_EDITORS) {
     const editorPass =

@@ -12,8 +12,9 @@ import { logAuditEvent } from './auth.routes.js';
 export const uploadRouter = express.Router();
 
 // 1. Authorize Upload (Presigned Upload Token)
-uploadRouter.post('/authorize-upload', requireAuth, (req, res) => {
+uploadRouter.post('/authorize-upload', requireAuth, async (req, res) => {
   const { orderId = 'PENDING', filename, sizeBytes, mimeType } = req.body;
+  const user = req.user;
 
   if (!filename) {
     return res.status(400).json({ error: 'Filename is required' });
@@ -23,6 +24,18 @@ uploadRouter.post('/authorize-upload', requireAuth, (req, res) => {
   const maxBytes = 5 * 1024 * 1024 * 1024; // 5GB
   if (sizeBytes && sizeBytes > maxBytes) {
     return res.status(400).json({ error: 'File exceeds 5.00 GB maximum ingest quota' });
+  }
+
+  // A concrete order id must belong to the caller (admin, its client, or its
+  // assigned editor). 'PENDING' is the pre-order intake case and is allowed.
+  if (orderId && orderId !== 'PENDING') {
+    const order = await queryOne('SELECT client_id, assigned_editor_id FROM orders WHERE id = $1', [orderId]);
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    if (user.role !== 'admin' && order.client_id !== user.id && order.assigned_editor_id !== user.id) {
+      return res.status(403).json({ error: 'Unauthorized to upload assets for this project.' });
+    }
   }
 
   const presigned = generatePresignedUpload({
@@ -74,13 +87,32 @@ uploadRouter.get('/authorize-download', requireAuth, async (req, res) => {
   if (!storageKey) {
     return res.status(400).json({ error: 'Storage key is required' });
   }
+  if (!orderId) {
+    return res.status(400).json({ error: 'orderId is required' });
+  }
 
-  // If orderId is given, verify authorization
-  if (orderId) {
-    const order = await queryOne('SELECT client_id, assigned_editor_id FROM orders WHERE id = $1', [orderId]);
-    if (order && user.role !== 'admin' && order.client_id !== user.id && order.assigned_editor_id !== user.id) {
-      return res.status(403).json({ error: 'Unauthorized to download assets for this project.' });
-    }
+  // The order must exist AND the caller must be authorized for it. (Previously
+  // the check was skipped when the order was not found, and skipped entirely
+  // when orderId was omitted — letting any authenticated user mint a signed
+  // link for an arbitrary storage key.)
+  const order = await queryOne('SELECT client_id, assigned_editor_id FROM orders WHERE id = $1', [orderId]);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  if (user.role !== 'admin' && order.client_id !== user.id && order.assigned_editor_id !== user.id) {
+    return res.status(403).json({ error: 'Unauthorized to download assets for this project.' });
+  }
+
+  // The storage key must actually be an asset of that order.
+  const owns = await queryOne(
+    `SELECT 1 FROM output_versions WHERE order_id = $1 AND storage_key = $2
+     UNION ALL
+     SELECT 1 FROM order_files    WHERE order_id = $1 AND storage_key = $2
+     LIMIT 1`,
+    [orderId, storageKey]
+  );
+  if (!owns) {
+    return res.status(404).json({ error: 'Asset not found for this order.' });
   }
 
   const presigned = generatePresignedDownload({
@@ -118,8 +150,11 @@ uploadRouter.get('/download', (req, res) => {
   const filePath = getLocalFilePath(storageKey);
 
   if (!fs.existsSync(filePath)) {
-    // If local file does not exist (e.g., initial sample external links), redirect to source URL if HTTP
-    if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
+    // No local blob: the deliverable is an external hosted URL that an admin or
+    // editor recorded against the order. Only follow https targets, and only
+    // because the signing step already verified this key belongs to an order
+    // the requester is authorized for.
+    if (storageKey.startsWith('https://')) {
       return res.redirect(storageKey);
     }
     return res.status(404).json({ error: 'Requested file asset not found in storage vault' });

@@ -9,7 +9,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 
 export const EditorsManagementPage = () => {
   const { orders, reassignEditor } = useOrders();
-  const { editors, addEditor, deleteEditor, generateEditorPassword, user } = useAuth();
+  const { editors, addEditor, deleteEditor, generateEditorPassword } = useAuth();
 
   const [selectedEditor, setSelectedEditor] = useState(editors[0] || null);
   const [reassignModalOrder, setReassignModalOrder] = useState(null);
@@ -63,19 +63,34 @@ export const EditorsManagementPage = () => {
     setNewEditorForm(prev => ({ ...prev, password: generateEditorPassword() }));
   };
 
-  const handleOnboardSubmit = (e) => {
+  const [isOnboarding, setIsOnboarding] = useState(false);
+
+  const handleOnboardSubmit = async (e) => {
     e.preventDefault();
     if (!newEditorForm.email || !newEditorForm.name) return;
 
-    const created = addEditor(newEditorForm, user?.email);
-    setCreatedCredentials({
-      name: created.name,
-      email: created.email,
-      password: created.password,
-      id: created.id
-    });
-    setShowOnboardModal(false);
-    setSelectedEditor(created);
+    setIsOnboarding(true);
+    try {
+      // addEditor() is async: it POSTs to /api/auth/editors and resolves to the
+      // created editor, including the one-time generated password returned by
+      // the server. That plaintext password is shown to the admin here once so
+      // it can be delivered to the editor out-of-band; it is never logged and
+      // never stored in plaintext (the server persists only a scrypt hash).
+      const created = await addEditor(newEditorForm);
+      if (!created) return; // addEditor surfaces its own error to the admin
+      setCreatedCredentials({
+        name: created.name,
+        email: created.email,
+        password: created.password,
+        id: created.id
+      });
+      setShowOnboardModal(false);
+      setSelectedEditor(created);
+    } catch {
+      // addEditor() already alerts the admin on failure; nothing to add here.
+    } finally {
+      setIsOnboarding(false);
+    }
   };
 
   const handleCopyCredentials = () => {
@@ -89,7 +104,7 @@ export const EditorsManagementPage = () => {
   const handleReassignSubmit = (e) => {
     e.preventDefault();
     if (!reassignModalOrder) return;
-    reassignEditor(reassignModalOrder.id, newEditorId, user);
+    reassignEditor(reassignModalOrder.id, newEditorId);
     setReassignModalOrder(null);
   };
 
@@ -101,7 +116,7 @@ export const EditorsManagementPage = () => {
     }
 
     if (window.confirm(`Are you sure you want to deactivate editor "${editorName}"?`)) {
-      deleteEditor(editorId, user?.email);
+      deleteEditor(editorId);
       if (selectedEditor?.id === editorId) {
         setSelectedEditor(editors.find(e => e.id !== editorId) || null);
       }
@@ -411,9 +426,10 @@ export const EditorsManagementPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary text-xs py-2 px-5 font-semibold cursor-pointer"
+                  disabled={isOnboarding}
+                  className="btn-primary text-xs py-2 px-5 font-semibold cursor-pointer disabled:opacity-50"
                 >
-                  Provision Account &rarr;
+                  {isOnboarding ? 'Provisioning…' : 'Provision Account →'}
                 </button>
               </div>
             </form>

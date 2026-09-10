@@ -12,8 +12,29 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Secret key for HMAC token signing (defaults to environment or stable internal key)
-const STORAGE_SECRET = process.env.STORAGE_SECRET || 'triphoria-storage-hmac-secret-vault-2026';
+// Secret key for HMAC signing of presigned upload/download tokens.
+// There is NO fallback: a missing STORAGE_SECRET must fail, never silently
+// sign tokens with a shipped, guessable key.
+//  - production: refuse to boot.
+//  - other envs: boot, but every storage-token operation throws until it is set.
+const STORAGE_SECRET = process.env.STORAGE_SECRET;
+if (!STORAGE_SECRET) {
+  const msg = '[storage] STORAGE_SECRET is required and has no fallback.';
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(msg);
+  }
+  console.warn(`${msg} Storage token endpoints are disabled until it is set.`);
+}
+
+function requireSecret() {
+  if (!STORAGE_SECRET) {
+    const err = new Error('Storage subsystem is not configured (STORAGE_SECRET missing).');
+    err.status = 503;
+    err.code = 'STORAGE_NOT_CONFIGURED';
+    throw err;
+  }
+  return STORAGE_SECRET;
+}
 
 /**
  * Generates an HMAC-SHA256 signed token for presigned uploads
@@ -33,7 +54,7 @@ export function generatePresignedUpload({ orderId, filename, sizeBytes, mimeType
     action: 'upload'
   });
 
-  const hmac = crypto.createHmac('sha256', STORAGE_SECRET);
+  const hmac = crypto.createHmac('sha256', requireSecret());
   hmac.update(payload);
   const signature = hmac.digest('hex');
 
@@ -50,11 +71,12 @@ export function generatePresignedUpload({ orderId, filename, sizeBytes, mimeType
  * Validates presigned token
  */
 export function verifyStorageToken(tokenString) {
+  const secret = requireSecret(); // throws 503 before any token is trusted
   try {
     const raw = Buffer.from(tokenString, 'base64url').toString('utf8');
     const { payload, signature } = JSON.parse(raw);
 
-    const hmac = crypto.createHmac('sha256', STORAGE_SECRET);
+    const hmac = crypto.createHmac('sha256', secret);
     hmac.update(payload);
     const expectedSig = hmac.digest('hex');
 
@@ -87,7 +109,7 @@ export function generatePresignedDownload({ storageKey, orderId, filename, expir
     action: 'download'
   });
 
-  const hmac = crypto.createHmac('sha256', STORAGE_SECRET);
+  const hmac = crypto.createHmac('sha256', requireSecret());
   hmac.update(payload);
   const signature = hmac.digest('hex');
 

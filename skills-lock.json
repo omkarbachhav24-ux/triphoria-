@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "skills": {
+    "manus-api": {
+      "source": "open.manus.ai",
+      "sourceUrl": "https://open.manus.ai/docs",
+      "sourceType": "well-known",
+      "computedHash": "954b8aaeaff2497f956e1aab7efc470de932e7f9bf41f83583ae83ad85bbc767",
+      "wellKnownDigest": "sha256:08e38a8844a96ee455ba8cb6079a1f1ed21379275fea953de483fe3358cb3332"
+    }
+  }
+}

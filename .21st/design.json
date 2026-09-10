@@ -1,0 +1,399 @@
+{
+  "version": 1,
+  "project": {
+    "name": "triphoria",
+    "productType": null,
+    "stack": [
+      "react",
+      "tailwind-v4",
+      "vite"
+    ]
+  },
+  "sources": {
+    "tokens": [
+      "src/index.css",
+      "src/app.css"
+    ],
+    "components": [
+      "src/components/ui"
+    ],
+    "assets": [
+      "src/assets"
+    ],
+    "instructions": []
+  },
+  "design": {
+    "colorMode": "light",
+    "colors": {
+      "--color-aubergine-ink": {
+        "value": "#1b0624",
+        "source": "src/index.css"
+      },
+      "--color-espresso": {
+        "value": "#160f0c",
+        "source": "src/index.css"
+      },
+      "--color-warm-ash": {
+        "value": "#766a7c",
+        "source": "src/index.css"
+      },
+      "--color-graphite": {
+        "value": "#444444",
+        "source": "src/index.css"
+      },
+      "--color-stone": {
+        "value": "#898683",
+        "source": "src/index.css"
+      },
+      "--color-onyx": {
+        "value": "#0d0d0d",
+        "source": "src/index.css"
+      },
+      "--color-smoke": {
+        "value": "#1a1816",
+        "source": "src/index.css"
+      },
+      "--color-charcoal": {
+        "value": "#292421",
+        "source": "src/index.css"
+      },
+      "--color-paper-white": {
+        "value": "#ffffff",
+        "source": "src/index.css"
+      },
+      "--color-linen": {
+        "value": "#f7f7f5",
+        "source": "src/index.css"
+      },
+      "--color-bone": {
+        "value": "#edece7",
+        "source": "src/index.css"
+      },
+      "--color-mist": {
+        "value": "#eeeeee",
+        "source": "src/index.css"
+      },
+      "--color-motion-bg": {
+        "value": "#0b0c0f",
+        "source": "src/index.css"
+      },
+      "--color-motion-bg-elevated": {
+        "value": "#111214",
+        "source": "src/index.css"
+      },
+      "--color-motion-surface": {
+        "value": "#17181b",
+        "source": "src/index.css"
+      },
+      "--color-motion-surface-hover": {
+        "value": "#1d1e22",
+        "source": "src/index.css"
+      },
+      "--color-motion-text": {
+        "value": "#f5f5f5",
+        "source": "src/index.css"
+      },
+      "--color-motion-text-strong": {
+        "value": "#ffffff",
+        "source": "src/index.css"
+      },
+      "--color-motion-text-muted": {
+        "value": "#a1a1a6",
+        "source": "src/index.css"
+      },
+      "--color-motion-text-subtle": {
+        "value": "#6f7075",
+        "source": "src/index.css"
+      },
+      "--color-motion-border": {
+        "value": "rgba(255, 255, 255, 0.10)",
+        "source": "src/index.css"
+      },
+      "--color-motion-border-subtle": {
+        "value": "rgba(255, 255, 255, 0.06)",
+        "source": "src/index.css"
+      }
+    },
+    "typography": {
+      "--font-gt-america": {
+        "value": "'Inter', -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-sans-serif": {
+        "value": "'Inter', -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif",
+        "source": "src/index.css"
+      },
+      "--font-mono": {
+        "value": "'IBM Plex Mono', 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace",
+        "source": "src/index.css"
+      },
+      "--text-micro": {
+        "value": "12px",
+        "source": "src/index.css"
+      },
+      "--leading-micro": {
+        "value": "1.2",
+        "source": "src/index.css"
+      },
+      "--text-caption": {
+        "value": "14px",
+        "source": "src/index.css"
+      },
+      "--leading-caption": {
+        "value": "1.5",
+        "source": "src/index.css"
+      },
+      "--text-body-sm": {
+        "value": "16px",
+        "source": "src/index.css"
+      },
+      "--leading-body-sm": {
+        "value": "1.6",
+        "source": "src/index.css"
+      },
+      "--text-body": {
+        "value": "18px",
+        "source": "src/index.css"
+      },
+      "--leading-body": {
+        "value": "1.5",
+        "source": "src/index.css"
+      },
+      "--text-body-lg": {
+        "value": "20px",
+        "source": "src/index.css"
+      },
+      "--leading-body-lg": {
+        "value": "1.4",
+        "source": "src/index.css"
+      },
+      "--tracking-body-lg": {
+        "value": "-0.2px",
+        "source": "src/index.css"
+      },
+      "--text-subheading": {
+        "value": "24px",
+        "source": "src/index.css"
+      },
+      "--leading-subheading": {
+        "value": "1.3",
+        "source": "src/index.css"
+      },
+      "--tracking-subheading": {
+        "value": "-0.48px",
+        "source": "src/index.css"
+      },
+      "--text-heading": {
+        "value": "32px",
+        "source": "src/index.css"
+      },
+      "--leading-heading": {
+        "value": "1.2",
+        "source": "src/index.css"
+      },
+      "--tracking-heading": {
+        "value": "-0.96px",
+        "source": "src/index.css"
+      },
+      "--text-heading-lg": {
+        "value": "44px",
+        "source": "src/index.css"
+      },
+      "--leading-heading-lg": {
+        "value": "1.1",
+        "source": "src/index.css"
+      },
+      "--tracking-heading-lg": {
+        "value": "-2.2px",
+        "source": "src/index.css"
+      },
+      "--text-display": {
+        "value": "72px",
+        "source": "src/index.css"
+      },
+      "--leading-display": {
+        "value": "1",
+        "source": "src/index.css"
+      },
+      "--tracking-display": {
+        "value": "-4.32px",
+        "source": "src/index.css"
+      },
+      "--font-weight-regular": {
+        "value": "400",
+        "source": "src/index.css"
+      },
+      "--font-weight-medium": {
+        "value": "500",
+        "source": "src/index.css"
+      }
+    },
+    "spacing": {
+      "--spacing-unit": {
+        "value": "4px",
+        "source": "src/index.css"
+      },
+      "--spacing-4": {
+        "value": "4px",
+        "source": "src/index.css"
+      },
+      "--spacing-8": {
+        "value": "8px",
+        "source": "src/index.css"
+      },
+      "--spacing-12": {
+        "value": "12px",
+        "source": "src/index.css"
+      },
+      "--spacing-16": {
+        "value": "16px",
+        "source": "src/index.css"
+      },
+      "--spacing-20": {
+        "value": "20px",
+        "source": "src/index.css"
+      },
+      "--spacing-24": {
+        "value": "24px",
+        "source": "src/index.css"
+      },
+      "--spacing-32": {
+        "value": "32px",
+        "source": "src/index.css"
+      },
+      "--spacing-40": {
+        "value": "40px",
+        "source": "src/index.css"
+      },
+      "--spacing-48": {
+        "value": "48px",
+        "source": "src/index.css"
+      },
+      "--spacing-60": {
+        "value": "60px",
+        "source": "src/index.css"
+      },
+      "--spacing-64": {
+        "value": "64px",
+        "source": "src/index.css"
+      },
+      "--spacing-80": {
+        "value": "80px",
+        "source": "src/index.css"
+      },
+      "--spacing-128": {
+        "value": "128px",
+        "source": "src/index.css"
+      },
+      "--spacing-140": {
+        "value": "140px",
+        "source": "src/index.css"
+      },
+      "--spacing-240": {
+        "value": "240px",
+        "source": "src/index.css"
+      },
+      "--section-gap": {
+        "value": "100px",
+        "source": "src/index.css"
+      },
+      "--element-gap": {
+        "value": "16px",
+        "source": "src/index.css"
+      }
+    },
+    "radius": {
+      "--radius-cards": {
+        "value": "16px",
+        "source": "src/index.css"
+      },
+      "--radius-badges": {
+        "value": "999px",
+        "source": "src/index.css"
+      },
+      "--radius-images": {
+        "value": "24px",
+        "source": "src/index.css"
+      },
+      "--radius-inputs": {
+        "value": "8px",
+        "source": "src/index.css"
+      },
+      "--radius-buttons": {
+        "value": "999px",
+        "source": "src/index.css"
+      },
+      "--radius-large-buttons": {
+        "value": "60px",
+        "source": "src/index.css"
+      }
+    },
+    "shadows": {
+      "--shadow-subtle": {
+        "value": "rgba(0, 0, 0, 0.05) 0px 0px 0px 1px inset",
+        "source": "src/index.css"
+      },
+      "--shadow-card": {
+        "value": "rgba(0, 0, 0, 0.04) 0px 4px 20px -2px, rgba(0, 0, 0, 0.04) 0px 0px 0px 1px inset",
+        "source": "src/index.css"
+      }
+    },
+    "motion": {},
+    "density": "unknown"
+  },
+  "components": {
+    "installed": [
+      "container-scroll-animation",
+      "continuous-timeline",
+      "CookieBanner",
+      "custom-cursor",
+      "film-primitives",
+      "magnetic-button",
+      "motion-primitives",
+      "phone-carousel",
+      "process-pipeline",
+      "rainbow-button",
+      "smooth-scroll"
+    ],
+    "preferredPrimitives": [
+      "radix-ui"
+    ],
+    "patterns": []
+  },
+  "constraints": {
+    "must": [],
+    "avoid": []
+  },
+  "decisions": [],
+  "evidence": [
+    {
+      "fact": "components.installed",
+      "source": "src/components/ui"
+    },
+    {
+      "fact": "design.colorMode:light",
+      "source": "src/index.css, src/app.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/app.css"
+    },
+    {
+      "fact": "design.tokens",
+      "source": "src/index.css"
+    },
+    {
+      "fact": "project.stack:react",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:tailwind-v4",
+      "source": "package.json"
+    },
+    {
+      "fact": "project.stack:vite",
+      "source": "package.json"
+    }
+  ],
+  "generatedAt": "2026-09-02T19:11:36.279Z"
+}

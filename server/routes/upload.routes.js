@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db } from '../db.js';
+import { queryOne } from '../db.js';
 import { requireAuth } from '../auth.js';
 import { 
   generatePresignedUpload, verifyStorageToken, 
@@ -67,7 +67,7 @@ uploadRouter.put('/upload', async (req, res) => {
 });
 
 // 3. Authorize Download (Presigned Download Token with Order RBAC)
-uploadRouter.get('/authorize-download', requireAuth, (req, res) => {
+uploadRouter.get('/authorize-download', requireAuth, async (req, res) => {
   const { orderId, storageKey, filename } = req.query;
   const user = req.user;
 
@@ -77,7 +77,7 @@ uploadRouter.get('/authorize-download', requireAuth, (req, res) => {
 
   // If orderId is given, verify authorization
   if (orderId) {
-    const order = db.prepare('SELECT client_id, assigned_editor_id FROM orders WHERE id = ?').get(orderId);
+    const order = await queryOne('SELECT client_id, assigned_editor_id FROM orders WHERE id = $1', [orderId]);
     if (order && user.role !== 'admin' && order.client_id !== user.id && order.assigned_editor_id !== user.id) {
       return res.status(403).json({ error: 'Unauthorized to download assets for this project.' });
     }
@@ -90,7 +90,7 @@ uploadRouter.get('/authorize-download', requireAuth, (req, res) => {
     expiresInSeconds: 900 // 15 mins
   });
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: user.id,
     actorRole: user.role,
     action: 'DOWNLOAD_TOKEN_GENERATED',

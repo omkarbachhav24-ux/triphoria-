@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from '../db.js';
+import { query, queryOne, withTransaction } from '../db.js';
 import { requireRole } from '../auth.js';
 import { logAuditEvent } from './auth.routes.js';
 
@@ -36,44 +36,44 @@ function formatProject(row) {
 }
 
 // 1. Public Published Portfolio
-cmsRouter.get('/portfolio', (req, res) => {
-  const rows = db.prepare(`
-    SELECT * FROM cms_projects 
-    WHERE is_published = 1 
+cmsRouter.get('/portfolio', async (req, res) => {
+  const { rows } = await query(`
+    SELECT * FROM cms_projects
+    WHERE is_published = 1
     ORDER BY created_at DESC
-  `).all();
+  `);
   res.json({ portfolio: rows.map(formatProject) });
 });
 
 // 2. Public Featured Work (Exact 3 Slots)
-cmsRouter.get('/featured', (req, res) => {
-  const rows = db.prepare(`
-    SELECT * FROM cms_projects 
-    WHERE is_published = 1 AND is_featured = 1 
+cmsRouter.get('/featured', async (req, res) => {
+  const { rows } = await query(`
+    SELECT * FROM cms_projects
+    WHERE is_published = 1 AND is_featured = 1
     ORDER BY featured_slot ASC
-  `).all();
+  `);
   res.json({ featured: rows.map(formatProject) });
 });
 
 // 3. Public Social Proof (Instagram)
-cmsRouter.get('/social', (req, res) => {
-  const rows = db.prepare(`
-    SELECT id, platform, url, title, caption, thumbnail_url as thumbnail, likes, is_published as isPublished
-    FROM cms_social 
-    WHERE is_published = 1 
+cmsRouter.get('/social', async (req, res) => {
+  const { rows } = await query(`
+    SELECT id, platform, url, title, caption, thumbnail_url as thumbnail, likes, is_published AS "isPublished"
+    FROM cms_social
+    WHERE is_published = 1
     ORDER BY created_at DESC
-  `).all();
+  `);
   res.json({ social: rows.map(r => ({ ...r, isPublished: Boolean(r.isPublished) })) });
 });
 
 // 4. Admin Portfolio Full Registry (Includes Drafts)
-cmsRouter.get('/admin/portfolio', requireRole('admin'), (req, res) => {
-  const rows = db.prepare('SELECT * FROM cms_projects ORDER BY created_at DESC').all();
+cmsRouter.get('/admin/portfolio', requireRole('admin'), async (req, res) => {
+  const { rows } = await query('SELECT * FROM cms_projects ORDER BY created_at DESC');
   res.json({ portfolio: rows.map(formatProject) });
 });
 
 // 5. Admin Create Portfolio Project
-cmsRouter.post('/portfolio', requireRole('admin'), (req, res) => {
+cmsRouter.post('/portfolio', requireRole('admin'), async (req, res) => {
   const {
     title, client, format, runtime, category, description,
     thumbnail, videoUrl, socialProvider = 'none', socialUrl = '', playbackUrl = '', aspectRatio = '16:9',
@@ -89,22 +89,23 @@ cmsRouter.post('/portfolio', requireRole('admin'), (req, res) => {
   const id = `WORK-${Date.now().toString().slice(-4)}`;
   const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO cms_projects (
+  await query(
+    `INSERT INTO cms_projects (
       id, title, client, format, runtime, category, description,
       thumbnail_url, video_url, social_provider, social_url, playback_url, aspect_ratio,
       camera, color_grade, audio_mix, pacing,
       is_featured, featured_slot, is_published, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, title, client || 'TRIPHORIA Client', format || '4K UHD', runtime || '01:30',
-    category || 'Commercial & Brand', description || '',
-    thumbnail || '', activePlayback || '', socialProvider, socialUrl, activePlayback, aspectRatio,
-    camera || '', colorGrade || '', audioMix || '', pacing || '',
-    isFeatured ? 1 : 0, featuredSlot || null, isPublished ? 1 : 0, now
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+    [
+      id, title, client || 'TRIPHORIA Client', format || '4K UHD', runtime || '01:30',
+      category || 'Commercial & Brand', description || '',
+      thumbnail || '', activePlayback || '', socialProvider, socialUrl, activePlayback, aspectRatio,
+      camera || '', colorGrade || '', audioMix || '', pacing || '',
+      isFeatured ? 1 : 0, featuredSlot || null, isPublished ? 1 : 0, now
+    ]
   );
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: req.user.id,
     actorRole: 'admin',
     action: 'CMS_PROJECT_CREATED',
@@ -113,12 +114,12 @@ cmsRouter.post('/portfolio', requireRole('admin'), (req, res) => {
     details: `Created portfolio project "${title}" (${category}).`
   });
 
-  const created = db.prepare('SELECT * FROM cms_projects WHERE id = ?').get(id);
+  const created = await queryOne('SELECT * FROM cms_projects WHERE id = $1', [id]);
   res.status(201).json({ success: true, project: formatProject(created) });
 });
 
 // 6. Admin Update Portfolio Project
-cmsRouter.put('/portfolio/:id', requireRole('admin'), (req, res) => {
+cmsRouter.put('/portfolio/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
   const {
     title, client, format, runtime, category, description,
@@ -129,39 +130,40 @@ cmsRouter.put('/portfolio/:id', requireRole('admin'), (req, res) => {
 
   const activePlayback = playbackUrl || videoUrl;
 
-  db.prepare(`
-    UPDATE cms_projects SET
-      title = coalesce(?, title),
-      client = coalesce(?, client),
-      format = coalesce(?, format),
-      runtime = coalesce(?, runtime),
-      category = coalesce(?, category),
-      description = coalesce(?, description),
-      thumbnail_url = coalesce(?, thumbnail_url),
-      video_url = coalesce(?, video_url),
-      social_provider = coalesce(?, social_provider),
-      social_url = coalesce(?, social_url),
-      playback_url = coalesce(?, playback_url),
-      aspect_ratio = coalesce(?, aspect_ratio),
-      camera = coalesce(?, camera),
-      color_grade = coalesce(?, color_grade),
-      audio_mix = coalesce(?, audio_mix),
-      pacing = coalesce(?, pacing),
-      is_featured = coalesce(?, is_featured),
-      featured_slot = ?,
-      is_published = coalesce(?, is_published)
-    WHERE id = ?
-  `).run(
-    title, client, format, runtime, category, description,
-    thumbnail, activePlayback, socialProvider, socialUrl, activePlayback, aspectRatio,
-    camera, colorGrade, audioMix, pacing,
-    typeof isFeatured === 'boolean' ? (isFeatured ? 1 : 0) : null,
-    featuredSlot !== undefined ? featuredSlot : null,
-    typeof isPublished === 'boolean' ? (isPublished ? 1 : 0) : null,
-    id
+  await query(
+    `UPDATE cms_projects SET
+      title = coalesce($1, title),
+      client = coalesce($2, client),
+      format = coalesce($3, format),
+      runtime = coalesce($4, runtime),
+      category = coalesce($5, category),
+      description = coalesce($6, description),
+      thumbnail_url = coalesce($7, thumbnail_url),
+      video_url = coalesce($8, video_url),
+      social_provider = coalesce($9, social_provider),
+      social_url = coalesce($10, social_url),
+      playback_url = coalesce($11, playback_url),
+      aspect_ratio = coalesce($12, aspect_ratio),
+      camera = coalesce($13, camera),
+      color_grade = coalesce($14, color_grade),
+      audio_mix = coalesce($15, audio_mix),
+      pacing = coalesce($16, pacing),
+      is_featured = coalesce($17, is_featured),
+      featured_slot = $18,
+      is_published = coalesce($19, is_published)
+    WHERE id = $20`,
+    [
+      title, client, format, runtime, category, description,
+      thumbnail, activePlayback, socialProvider, socialUrl, activePlayback, aspectRatio,
+      camera, colorGrade, audioMix, pacing,
+      typeof isFeatured === 'boolean' ? (isFeatured ? 1 : 0) : null,
+      featuredSlot !== undefined ? featuredSlot : null,
+      typeof isPublished === 'boolean' ? (isPublished ? 1 : 0) : null,
+      id
+    ]
   );
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: req.user.id,
     actorRole: 'admin',
     action: 'CMS_PROJECT_UPDATED',
@@ -170,16 +172,16 @@ cmsRouter.put('/portfolio/:id', requireRole('admin'), (req, res) => {
     details: `Updated portfolio project ID ${id}.`
   });
 
-  const updated = db.prepare('SELECT * FROM cms_projects WHERE id = ?').get(id);
+  const updated = await queryOne('SELECT * FROM cms_projects WHERE id = $1', [id]);
   res.json({ success: true, project: formatProject(updated) });
 });
 
 // 7. Admin Delete Portfolio Project
-cmsRouter.delete('/portfolio/:id', requireRole('admin'), (req, res) => {
+cmsRouter.delete('/portfolio/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  db.prepare('DELETE FROM cms_projects WHERE id = ?').run(id);
+  await query('DELETE FROM cms_projects WHERE id = $1', [id]);
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: req.user.id,
     actorRole: 'admin',
     action: 'CMS_PROJECT_DELETED',
@@ -192,51 +194,48 @@ cmsRouter.delete('/portfolio/:id', requireRole('admin'), (req, res) => {
 });
 
 // 8. Admin Atomic Featured Slots Update (Slots 1, 2, 3)
-cmsRouter.post('/featured-slots', requireRole('admin'), (req, res) => {
+cmsRouter.post('/featured-slots', requireRole('admin'), async (req, res) => {
   const { slot1Id, slot2Id, slot3Id } = req.body;
 
   try {
-    db.exec('BEGIN TRANSACTION;');
+    await withTransaction(async (client) => {
+      // Reset current featured flags
+      await client.query('UPDATE cms_projects SET is_featured = 0, featured_slot = NULL');
 
-    // Reset current featured flags
-    db.prepare('UPDATE cms_projects SET is_featured = 0, featured_slot = NULL').run();
-
-    if (slot1Id) {
-      db.prepare('UPDATE cms_projects SET is_featured = 1, featured_slot = 1 WHERE id = ?').run(slot1Id);
-    }
-    if (slot2Id) {
-      db.prepare('UPDATE cms_projects SET is_featured = 1, featured_slot = 2 WHERE id = ?').run(slot2Id);
-    }
-    if (slot3Id) {
-      db.prepare('UPDATE cms_projects SET is_featured = 1, featured_slot = 3 WHERE id = ?').run(slot3Id);
-    }
-
-    db.exec('COMMIT;');
-
-    logAuditEvent({
-      actorId: req.user.id,
-      actorRole: 'admin',
-      action: 'FEATURED_SLOTS_UPDATED',
-      entityType: 'CMS',
-      entityId: 'featured_slots',
-      details: `Super Admin assigned featured slots: Slot1=${slot1Id}, Slot2=${slot2Id}, Slot3=${slot3Id}.`
+      if (slot1Id) {
+        await client.query('UPDATE cms_projects SET is_featured = 1, featured_slot = 1 WHERE id = $1', [slot1Id]);
+      }
+      if (slot2Id) {
+        await client.query('UPDATE cms_projects SET is_featured = 1, featured_slot = 2 WHERE id = $1', [slot2Id]);
+      }
+      if (slot3Id) {
+        await client.query('UPDATE cms_projects SET is_featured = 1, featured_slot = 3 WHERE id = $1', [slot3Id]);
+      }
     });
-
-    res.json({ success: true, message: 'Featured slots updated successfully' });
   } catch (err) {
-    db.exec('ROLLBACK;');
-    res.status(500).json({ error: 'Failed to update featured slots' });
+    return res.status(500).json({ error: 'Failed to update featured slots' });
   }
+
+  await logAuditEvent({
+    actorId: req.user.id,
+    actorRole: 'admin',
+    action: 'FEATURED_SLOTS_UPDATED',
+    entityType: 'CMS',
+    entityId: 'featured_slots',
+    details: `Super Admin assigned featured slots: Slot1=${slot1Id}, Slot2=${slot2Id}, Slot3=${slot3Id}.`
+  });
+
+  res.json({ success: true, message: 'Featured slots updated successfully' });
 });
 
 // 9. Admin Social Full Registry
-cmsRouter.get('/admin/social', requireRole('admin'), (req, res) => {
-  const rows = db.prepare('SELECT id, platform, url, title, caption, thumbnail_url as thumbnail, likes, is_published as isPublished FROM cms_social ORDER BY created_at DESC').all();
+cmsRouter.get('/admin/social', requireRole('admin'), async (req, res) => {
+  const { rows } = await query('SELECT id, platform, url, title, caption, thumbnail_url as thumbnail, likes, is_published AS "isPublished" FROM cms_social ORDER BY created_at DESC');
   res.json({ social: rows.map(r => ({ ...r, isPublished: Boolean(r.isPublished) })) });
 });
 
 // 10. Admin Create Social Post
-cmsRouter.post('/social', requireRole('admin'), (req, res) => {
+cmsRouter.post('/social', requireRole('admin'), async (req, res) => {
   const { platform, url, title, caption, thumbnail, likes, isPublished = true } = req.body;
   if (!url || !title) {
     return res.status(400).json({ error: 'URL and title are required' });
@@ -245,16 +244,17 @@ cmsRouter.post('/social', requireRole('admin'), (req, res) => {
   const id = `SOC-${Date.now().toString().slice(-4)}`;
   const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO cms_social (id, platform, url, title, caption, thumbnail_url, likes, is_published, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id, platform || 'Instagram Reel', url, title, caption || '',
-    thumbnail || 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d',
-    likes || '1.2k', isPublished ? 1 : 0, now
+  await query(
+    `INSERT INTO cms_social (id, platform, url, title, caption, thumbnail_url, likes, is_published, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [
+      id, platform || 'Instagram Reel', url, title, caption || '',
+      thumbnail || 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d',
+      likes || '1.2k', isPublished ? 1 : 0, now
+    ]
   );
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: req.user.id,
     actorRole: 'admin',
     action: 'CMS_SOCIAL_CREATED',
@@ -267,11 +267,11 @@ cmsRouter.post('/social', requireRole('admin'), (req, res) => {
 });
 
 // 11. Admin Delete Social Post
-cmsRouter.delete('/social/:id', requireRole('admin'), (req, res) => {
+cmsRouter.delete('/social/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  db.prepare('DELETE FROM cms_social WHERE id = ?').run(id);
+  await query('DELETE FROM cms_social WHERE id = $1', [id]);
 
-  logAuditEvent({
+  await logAuditEvent({
     actorId: req.user.id,
     actorRole: 'admin',
     action: 'CMS_SOCIAL_DELETED',

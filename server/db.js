@@ -1,33 +1,88 @@
-import { DatabaseSync } from 'node:sqlite';
+import pg from 'pg';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { 
-  DEFAULT_ADMIN, INITIAL_EDITORS, INITIAL_CUSTOMERS, 
-  INITIAL_PORTFOLIO, INITIAL_SOCIAL, INITIAL_ORDERS 
+import {
+  DEFAULT_ADMIN, INITIAL_EDITORS, INITIAL_CUSTOMERS,
+  INITIAL_PORTFOLIO, INITIAL_SOCIAL, INITIAL_ORDERS
 } from '../src/data/initialData.js';
+
+const { Pool } = pg;
+
+// Return BIGINT (int8, OID 20) as a JS number rather than a string, matching the
+// behaviour of the previous node:sqlite layer. All byte-size / count values in
+// this schema are well within Number.MAX_SAFE_INTEGER.
+pg.types.setTypeParser(20, (val) => (val === null ? null : parseInt(val, 10)));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure data directory exists
-const dataDir = path.resolve(__dirname, '../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// ---------------------------------------------------------------------------
+// Connection pool (Supabase Postgres)
+// ---------------------------------------------------------------------------
+// DATABASE_URL must point at the Supabase connection pooler (port 6543,
+// "Transaction" mode) in serverless environments. A direct connection also
+// works for local development.
+const connectionString = process.env.DATABASE_URL || '';
+
+if (!connectionString) {
+  console.warn(
+    '[DB] DATABASE_URL is not set. The API cannot reach Postgres until it is configured.'
+  );
 }
 
-const dbPath = path.join(dataDir, 'triphoria.db');
-export const db = new DatabaseSync(dbPath);
+const isLocalPg = /(^|@|\/\/)(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString);
 
-// Enable WAL mode & foreign keys for ACID compliance
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  PRAGMA foreign_keys = ON;
-  PRAGMA busy_timeout = 5000;
-`);
+export const pool = new Pool({
+  connectionString,
+  // Supabase requires TLS; its pooler presents a cert that node-postgres cannot
+  // chain-verify by default, so disable strict verification for non-local hosts.
+  ssl: isLocalPg || !connectionString ? false : { rejectUnauthorized: false },
+  // One connection per serverless instance; a small pool for a long-lived local process.
+  max: process.env.VERCEL ? 1 : 10,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000
+});
 
-// Password hashing utility using native scrypt
+pool.on('error', (err) => {
+  console.error('[DB] Idle client error', err);
+});
+
+/** Run a parameterised query. Returns the full pg result. */
+export function query(text, params) {
+  return pool.query(text, params);
+}
+
+/** Run a parameterised query and return the first row (or null). */
+export async function queryOne(text, params) {
+  const { rows } = await pool.query(text, params);
+  return rows[0] || null;
+}
+
+/**
+ * Run `fn` inside a single BEGIN/COMMIT transaction on a dedicated client.
+ * Rolls back automatically if `fn` throws. `fn` receives the checked-out client
+ * and must use `client.query(...)` for every statement in the transaction.
+ */
+export async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch { /* ignore rollback failure */ }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Password hashing (unchanged — native scrypt, `salt:derivedKeyHex`)
+// ---------------------------------------------------------------------------
 export function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const derivedKey = crypto.scryptSync(password, salt, 64);
@@ -39,192 +94,61 @@ export function verifyPassword(password, storedHash) {
   const [salt, key] = storedHash.split(':');
   const derivedKey = crypto.scryptSync(password, salt, 64);
   const keyBuffer = Buffer.from(key, 'hex');
+  if (keyBuffer.length !== derivedKey.length) return false;
   return crypto.timingSafeEqual(derivedKey, keyBuffer);
 }
 
-// Initialize Relational Schema
-export function initSchema() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('admin', 'editor', 'customer', 'client')),
-      specialty TEXT,
-      max_capacity INTEGER DEFAULT 3,
-      avatar_url TEXT,
-      organization TEXT,
-      status TEXT DEFAULT 'active',
-      created_at TEXT NOT NULL
-    );
+// ---------------------------------------------------------------------------
+// Schema initialisation & first-run seeding
+// ---------------------------------------------------------------------------
+let schemaPromise = null;
 
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      token TEXT UNIQUE NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      client_id TEXT NOT NULL REFERENCES users(id),
-      status TEXT NOT NULL CHECK(status IN ('Pending Approval', 'In Progress', 'Review', 'Completed', 'Rejected')),
-      package_name TEXT NOT NULL,
-      editing_style TEXT NOT NULL,
-      platform TEXT NOT NULL,
-      target_length TEXT NOT NULL,
-      project_name TEXT NOT NULL,
-      instructions TEXT,
-      google_drive_url TEXT,
-      deadline TEXT NOT NULL,
-      assigned_editor_id TEXT REFERENCES users(id),
-      admin_notes TEXT,
-      rejection_reason TEXT,
-      idempotency_key TEXT UNIQUE,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS order_files (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-      filename TEXT NOT NULL,
-      size_bytes INTEGER NOT NULL,
-      mime_type TEXT NOT NULL,
-      storage_key TEXT NOT NULL,
-      upload_status TEXT NOT NULL CHECK(upload_status IN ('pending', 'uploading', 'completed', 'failed')),
-      checksum TEXT,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS output_versions (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-      version_tag TEXT NOT NULL,
-      editor_id TEXT NOT NULL REFERENCES users(id),
-      storage_key TEXT NOT NULL,
-      format TEXT NOT NULL,
-      resolution TEXT NOT NULL,
-      runtime TEXT NOT NULL,
-      size_bytes INTEGER,
-      notes TEXT,
-      is_authoritative INTEGER DEFAULT 0,
-      uploaded_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS storage_lifecycle (
-      order_id TEXT PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
-      status TEXT NOT NULL CHECK(status IN ('Active', 'Retention', 'Retention Period', 'Pending Deletion', 'Soft-Deleted', 'Purged')),
-      bytes_total INTEGER DEFAULT 0,
-      retention_expires_at TEXT,
-      soft_deleted_at TEXT,
-      purged_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_events (
-      id TEXT PRIMARY KEY,
-      actor_id TEXT NOT NULL,
-      actor_role TEXT NOT NULL,
-      action TEXT NOT NULL,
-      entity_type TEXT NOT NULL,
-      entity_id TEXT NOT NULL,
-      details TEXT,
-      metadata_json TEXT,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS cms_projects (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      client TEXT NOT NULL,
-      format TEXT NOT NULL,
-      runtime TEXT NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT NOT NULL,
-      thumbnail_url TEXT NOT NULL,
-      video_url TEXT NOT NULL,
-      social_provider TEXT DEFAULT 'none',
-      social_url TEXT,
-      playback_url TEXT,
-      aspect_ratio TEXT DEFAULT '16:9',
-      camera TEXT,
-      color_grade TEXT,
-      audio_mix TEXT,
-      pacing TEXT,
-      is_featured INTEGER DEFAULT 0,
-      featured_slot INTEGER,
-      is_published INTEGER DEFAULT 1,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS cms_social (
-      id TEXT PRIMARY KEY,
-      platform TEXT NOT NULL,
-      url TEXT NOT NULL,
-      title TEXT NOT NULL,
-      caption TEXT NOT NULL,
-      thumbnail_url TEXT NOT NULL,
-      likes TEXT NOT NULL,
-      is_published INTEGER DEFAULT 1,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS idempotency_records (
-      key TEXT PRIMARY KEY,
-      response_status INTEGER NOT NULL,
-      response_body TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-    CREATE INDEX IF NOT EXISTS idx_orders_client ON orders(client_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_editor ON orders(assigned_editor_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-    CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at);
-  `);
-
-  // Migration: Add google_drive_url to existing orders tables
-  try {
-    db.exec(`ALTER TABLE orders ADD COLUMN google_drive_url TEXT`);
-  } catch (e) {
-    // Column already exists — safe to ignore
+/**
+ * Ensure the schema exists and the database is seeded. Memoised so it runs at
+ * most once per process (serverless cold start or local boot). Safe to call
+ * before every request.
+ */
+export function ensureSchema() {
+  if (!schemaPromise) {
+    schemaPromise = initSchema().catch((err) => {
+      schemaPromise = null; // allow a later retry
+      throw err;
+    });
   }
-
-  // Migration: Add media model columns to cms_projects
-  try { db.exec(`ALTER TABLE cms_projects ADD COLUMN social_provider TEXT DEFAULT 'none'`); } catch (e) {}
-  try { db.exec(`ALTER TABLE cms_projects ADD COLUMN social_url TEXT`); } catch (e) {}
-  try { db.exec(`ALTER TABLE cms_projects ADD COLUMN playback_url TEXT`); } catch (e) {}
-  try { db.exec(`ALTER TABLE cms_projects ADD COLUMN aspect_ratio TEXT DEFAULT '16:9'`); } catch (e) {}
-
-  // Seed default data if database is fresh
-  seedInitialData();
+  return schemaPromise;
 }
 
-function seedInitialData() {
-  const userCountStmt = db.prepare('SELECT COUNT(*) as count FROM users');
-  const userCount = userCountStmt.get().count;
+async function initSchema() {
+  const ddl = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+  await pool.query(ddl); // multi-statement simple query (no params)
+  await seedInitialData();
+}
 
-  if (userCount === 0) {
-    console.log('[DB] Seeding initial database records...');
-    const now = new Date().toISOString();    // 1. Seed Admin
-    const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN.email;
-    const adminPassword = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV !== 'production' ? 'adminpgt' : null);
+async function seedInitialData() {
+  const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+  if (rows[0].count > 0) return;
 
-    if (!adminPassword) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error('[CRITICAL DB ERROR] ADMIN_PASSWORD environment variable is required in production mode!');
-        process.exit(1);
-      } else {
-        console.warn('[DB WARNING] ADMIN_PASSWORD missing. Admin creation skipped.');
-      }
+  console.log('[DB] Seeding initial database records...');
+  const now = new Date().toISOString();
+
+  // 1. Seed Admin
+  const adminEmail = process.env.ADMIN_EMAIL || DEFAULT_ADMIN.email;
+  const adminPassword =
+    process.env.ADMIN_PASSWORD ||
+    (process.env.NODE_ENV !== 'production' ? 'adminpgt' : null);
+
+  if (!adminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL DB ERROR] ADMIN_PASSWORD environment variable is required in production mode!');
+      process.exit(1);
     } else {
-      const insertUser = db.prepare(`
-        INSERT INTO users (id, name, email, password_hash, role, avatar_url, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-      insertUser.run(
+      console.warn('[DB WARNING] ADMIN_PASSWORD missing. Admin creation skipped.');
+    }
+  } else {
+    await pool.query(
+      `INSERT INTO users (id, name, email, password_hash, role, avatar_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
         DEFAULT_ADMIN.id,
         DEFAULT_ADMIN.name,
         adminEmail.toLowerCase(),
@@ -232,17 +156,19 @@ function seedInitialData() {
         DEFAULT_ADMIN.role,
         DEFAULT_ADMIN.avatar,
         now
-      );
-    }
+      ]
+    );
+  }
 
-    // 2. Seed Editors
-    const insertEditor = db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, specialty, max_capacity, avatar_url, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    for (const ed of INITIAL_EDITORS) {
-      const editorPass = process.env.EDITOR_SEED_PASSWORD || (process.env.NODE_ENV !== 'production' ? 'editorpgt' : crypto.randomBytes(16).toString('hex'));
-      insertEditor.run(
+  // 2. Seed Editors
+  for (const ed of INITIAL_EDITORS) {
+    const editorPass =
+      process.env.EDITOR_SEED_PASSWORD ||
+      (process.env.NODE_ENV !== 'production' ? 'editorpgt' : crypto.randomBytes(16).toString('hex'));
+    await pool.query(
+      `INSERT INTO users (id, name, email, password_hash, role, specialty, max_capacity, avatar_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
         ed.id,
         ed.name,
         ed.email.toLowerCase(),
@@ -252,17 +178,19 @@ function seedInitialData() {
         ed.maxCapacity || 3,
         ed.avatar,
         now
-      );
-    }
+      ]
+    );
+  }
 
-    // 3. Seed Initial Customers
-    const insertCustomer = db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, role, organization, avatar_url, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    for (const cust of INITIAL_CUSTOMERS) {
-      const clientPass = process.env.CUSTOMER_SEED_PASSWORD || (process.env.NODE_ENV !== 'production' ? 'clientpgt' : crypto.randomBytes(16).toString('hex'));
-      insertCustomer.run(
+  // 3. Seed Initial Customers
+  for (const cust of INITIAL_CUSTOMERS) {
+    const clientPass =
+      process.env.CUSTOMER_SEED_PASSWORD ||
+      (process.env.NODE_ENV !== 'production' ? 'clientpgt' : crypto.randomBytes(16).toString('hex'));
+    await pool.query(
+      `INSERT INTO users (id, name, email, password_hash, role, organization, avatar_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
         cust.id,
         cust.name,
         cust.email.toLowerCase(),
@@ -271,39 +199,22 @@ function seedInitialData() {
         cust.organization || 'Independent Creator',
         cust.avatar,
         now
-      );
-    }
+      ]
+    );
+  }
 
-    // 4. Seed Orders & Lifecycles
-    const insertOrder = db.prepare(`
-      INSERT INTO orders (
+  // 4. Seed Orders, files, lifecycles & outputs
+  for (const ord of INITIAL_ORDERS) {
+    const clientId = ord.userId || 'user-101';
+    const assignedEd = ord.assignedEditorId || null;
+
+    await pool.query(
+      `INSERT INTO orders (
         id, client_id, status, package_name, editing_style, platform,
         target_length, project_name, instructions, google_drive_url, deadline, assigned_editor_id,
         admin_notes, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertLifecycle = db.prepare(`
-      INSERT INTO storage_lifecycle (order_id, status, bytes_total, retention_expires_at, soft_deleted_at, purged_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertOrderFile = db.prepare(`
-      INSERT INTO order_files (id, order_id, filename, size_bytes, mime_type, storage_key, upload_status, checksum, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertOutput = db.prepare(`
-      INSERT INTO output_versions (
-        id, order_id, version_tag, editor_id, storage_key, format,
-        resolution, runtime, size_bytes, notes, is_authoritative, uploaded_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const ord of INITIAL_ORDERS) {
-      const clientId = ord.userId || 'user-101';
-      const assignedEd = ord.assignedEditorId || null;
-      insertOrder.run(
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [
         ord.id,
         clientId,
         ord.status,
@@ -319,13 +230,17 @@ function seedInitialData() {
         ord.adminNotes || '',
         ord.createdAt,
         ord.createdAt
-      );
+      ]
+    );
 
-      // Raw files
-      if (ord.rawFootage && ord.rawFootage.length > 0) {
-        for (let i = 0; i < ord.rawFootage.length; i++) {
-          const file = ord.rawFootage[i];
-          insertOrderFile.run(
+    // Raw files
+    if (ord.rawFootage && ord.rawFootage.length > 0) {
+      for (let i = 0; i < ord.rawFootage.length; i++) {
+        const file = ord.rawFootage[i];
+        await pool.query(
+          `INSERT INTO order_files (id, order_id, filename, size_bytes, mime_type, storage_key, upload_status, checksum, created_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
             `file-${ord.id}-${i}`,
             ord.id,
             file.filename,
@@ -335,31 +250,45 @@ function seedInitialData() {
             'completed',
             'd41d8cd98f00b204e9800998ecf8427e',
             ord.createdAt
-          );
-        }
+          ]
+        );
       }
+    }
 
-      // Storage lifecycle
-      if (ord.storageLifecycle) {
-        insertLifecycle.run(
+    // Storage lifecycle
+    if (ord.storageLifecycle) {
+      await pool.query(
+        `INSERT INTO storage_lifecycle (order_id, status, bytes_total, retention_expires_at, soft_deleted_at, purged_at)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
           ord.id,
           ord.storageLifecycle.status || 'Active',
           ord.storageLifecycle.bytesTotal || 0,
           ord.storageLifecycle.retentionExpiresAt || null,
           ord.storageLifecycle.softDeletedAt || null,
           ord.storageLifecycle.purgedAt || null
-        );
-      } else {
-        insertLifecycle.run(ord.id, 'Active', 0, null, null, null);
-      }
+        ]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO storage_lifecycle (order_id, status, bytes_total, retention_expires_at, soft_deleted_at, purged_at)
+         VALUES ($1, 'Active', 0, NULL, NULL, NULL)`,
+        [ord.id]
+      );
+    }
 
-      // Outputs
-      if (ord.outputVersions && ord.outputVersions.length > 0) {
-        for (let idx = 0; idx < ord.outputVersions.length; idx++) {
-          const out = ord.outputVersions[idx];
-          const outputId = out.versionId || out.id || `ver-${ord.id}-${idx + 1}`;
-          const storageKey = out.downloadUrl || out.storageKey || out.url || `outputs/${ord.id}/master.mp4`;
-          insertOutput.run(
+    // Outputs
+    if (ord.outputVersions && ord.outputVersions.length > 0) {
+      for (let idx = 0; idx < ord.outputVersions.length; idx++) {
+        const out = ord.outputVersions[idx];
+        const outputId = out.versionId || out.id || `ver-${ord.id}-${idx + 1}`;
+        const storageKey = out.downloadUrl || out.storageKey || out.url || `outputs/${ord.id}/master.mp4`;
+        await pool.query(
+          `INSERT INTO output_versions (
+            id, order_id, version_tag, editor_id, storage_key, format,
+            resolution, runtime, size_bytes, notes, is_authoritative, uploaded_at
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [
             outputId,
             ord.id,
             out.version || 'v1.0',
@@ -372,23 +301,22 @@ function seedInitialData() {
             out.notes || '',
             out.isAuthoritative ? 1 : 0,
             out.uploadedAt || ord.createdAt
-          );
-        }
+          ]
+        );
       }
     }
+  }
 
-    // 5. Seed CMS Portfolio
-    const insertCMS = db.prepare(`
-      INSERT INTO cms_projects (
+  // 5. Seed CMS Portfolio
+  for (const p of INITIAL_PORTFOLIO) {
+    await pool.query(
+      `INSERT INTO cms_projects (
         id, title, client, format, runtime, category, description,
         thumbnail_url, video_url, social_provider, social_url, playback_url, aspect_ratio,
         camera, color_grade, audio_mix, pacing,
         is_featured, featured_slot, is_published, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const p of INITIAL_PORTFOLIO) {
-      insertCMS.run(
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+      [
         p.id,
         p.title,
         p.client,
@@ -410,18 +338,17 @@ function seedInitialData() {
         p.featuredSlot || null,
         p.isPublished ? 1 : 0,
         now
-      );
-    }
+      ]
+    );
+  }
 
-    // 6. Seed CMS Social
-    const insertSocial = db.prepare(`
-      INSERT INTO cms_social (
+  // 6. Seed CMS Social
+  for (const s of INITIAL_SOCIAL) {
+    await pool.query(
+      `INSERT INTO cms_social (
         id, platform, url, title, caption, thumbnail_url, likes, is_published, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const s of INITIAL_SOCIAL) {
-      insertSocial.run(
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
         s.id,
         s.platform,
         s.url,
@@ -431,29 +358,26 @@ function seedInitialData() {
         s.likes,
         s.isPublished ? 1 : 0,
         now
-      );
-    }
+      ]
+    );
+  }
 
-    // 7. Initial Audit Event
-    const insertAudit = db.prepare(`
-      INSERT INTO audit_events (
-        id, actor_id, actor_role, action, entity_type, entity_id, details, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    insertAudit.run(
+  // 7. Initial Audit Event
+  await pool.query(
+    `INSERT INTO audit_events (
+      id, actor_id, actor_role, action, entity_type, entity_id, details, created_at
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
       `audit-${Date.now()}`,
       'system',
       'system',
       'DATABASE_INITIALIZED',
       'System',
-      'triphoria.db',
-      'Relational database initialized with WAL mode, foreign keys, and seed records.',
+      'triphoria-postgres',
+      'Relational database initialized on Supabase Postgres with seed records.',
       now
-    );
+    ]
+  );
 
-    console.log('[DB] Seeding completed successfully.');
-  }
+  console.log('[DB] Seeding completed successfully.');
 }
-
-// Execute schema init on module load
-initSchema();

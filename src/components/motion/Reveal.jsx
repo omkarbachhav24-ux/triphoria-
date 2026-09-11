@@ -12,7 +12,18 @@ import { motionPresets } from '../../design-system/motionPresets';
  * Exports: Reveal, Stagger, StaggerItem, TextReveal, ImageReveal
  */
 
-const VIEWPORT = { once: true, amount: 0.25, margin: '0px 0px -8% 0px' };
+// amount: 0 (not 0.25) is deliberate — Motion's whileInView requires that
+// fraction of the *target's own area* to intersect the viewport, and for a
+// tall/large target (a full data table, a long list) that can be a huge
+// absolute pixel count that never satisfies on initial load even though the
+// element is clearly visible on screen. Reproduced on the audit log table
+// (9800px tall, ~460px visible on load -> needed ~2450px to trigger at
+// 0.25 -> stuck at opacity:0 indefinitely) and on the B6 editor-roster grid
+// before Stagger was switched off whileInView entirely. Triggering on any
+// intersection keeps the scroll-reveal choreography for genuinely
+// below-the-fold sections while being safe for content near or larger than
+// the viewport.
+const VIEWPORT = { once: true, amount: 0, margin: '0px 0px -8% 0px' };
 
 const DIRECTIONS = {
   up: { y: 20 },

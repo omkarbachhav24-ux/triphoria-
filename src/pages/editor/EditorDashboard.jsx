@@ -1,402 +1,359 @@
-import React, { useState } from 'react';
-import { 
-  Scissors, Film, Play, Upload, CheckCircle2, Clock, 
-  ExternalLink, ArrowRight, Eye, Shield, FileText, Check, AlertCircle, X
+import React, { useMemo, useState } from 'react';
+import {
+  Scissors, Film, Play, Upload, ExternalLink, ArrowRight, X,
 } from 'lucide-react';
 import { useOrders } from '../../context/OrderContext';
 import { useAuth } from '../../context/AuthContext';
+import { Scene } from '../../components/ui/Scene';
+import { Reveal, Stagger, StaggerItem } from '../../components/motion/Reveal';
+import { AspectFrame } from '../../components/video/AspectFrame';
+import { VideoModal } from '../../components/video/VideoModal';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { VideoPlayer } from '../../components/common/VideoPlayer';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Field } from '../../components/ui/Field';
 
-export const EditorDashboard = ({ onNavigate }) => {
+// Reject empty links and known throwaway/sample hosts so a real hosted
+// deliverable URL is always what gets recorded against the order.
+const SAMPLE_HOSTS = ['commondatastorage.googleapis.com', 'sample-videos.com', 'test-videos.co.uk'];
+function isRealDeliverableUrl(url) {
+  try {
+    const u = new URL(url.trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    return !SAMPLE_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
+const isOverdueOrToday = (deadline) => {
+  if (!deadline) return false;
+  const d = new Date(deadline);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d <= today;
+};
+
+// Lane classification derives strictly from server-authoritative order.status
+// (+ deadline for the In-Progress split) — never fabricated client state.
+function classify(order) {
+  if (order.status === 'Review') return 'review';
+  if (order.status === 'Completed' || order.status === 'Rejected') return 'completed';
+  if (order.status === 'In Progress') {
+    return isOverdueOrToday(order.deadline) ? 'today' : 'upcoming';
+  }
+  return 'upcoming'; // Pending Approval — assigned but not yet actionable by editor
+}
+
+function LaneCount({ label, count, active }) {
+  return (
+    <div
+      className="flex items-center justify-between border-b-2 px-1 pb-3 text-[12px] font-mono uppercase tracking-wider"
+      style={{ borderColor: active ? 'var(--primary)' : 'transparent', color: active ? 'var(--foreground-strong)' : 'var(--foreground-subtle)' }}
+    >
+      <span>{label}</span>
+      <span className="ml-2 font-semibold">{count}</span>
+    </div>
+  );
+}
+
+export function EditorDashboard() {
   const { orders, uploadEditorOutput } = useOrders();
   const { user } = useAuth();
 
-  const [activeProject, setActiveProject] = useState(null);
+  const [lane, setLane] = useState('today');
+  const [activeId, setActiveId] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(null);
-  const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
-  const [outputForm, setOutputForm] = useState({
-    version: 'v1.0',
-    filename: '',
-    format: 'ProRes 422 HQ / Rec.709',
-    resolution: '3840x2160 @ 24fps',
-    runtime: '00:12:30',
-    sizeDisplay: '1.20 GB',
-    downloadUrl: '',
-    notes: ''
-  });
+  const [previewVersion, setPreviewVersion] = useState(null);
   const [uploadError, setUploadError] = useState('');
+  const [outputForm, setOutputForm] = useState(null);
 
-  // Editor sees STRICTLY work assigned to them (§13)
-  const assignedOrders = orders.filter(o => o.assignedEditorId === user?.id);
+  // Editor sees STRICTLY work assigned to them — the server already scopes
+  // GET /api/orders this way; this filter is defence-in-depth, not the
+  // authorization boundary.
+  const assignedOrders = useMemo(
+    () => orders.filter((o) => o.assignedEditorId === user?.id),
+    [orders, user]
+  );
+
+  const lanes = useMemo(() => {
+    const grouped = { today: [], upcoming: [], review: [], completed: [] };
+    for (const o of assignedOrders) grouped[classify(o)].push(o);
+    return grouped;
+  }, [assignedOrders]);
+
+  const laneOrders = lanes[lane] || [];
+  const active = laneOrders.find((o) => o.id === activeId) || laneOrders[0] || null;
 
   const openUploadModal = (ord) => {
-    setShowUploadModal(ord);
     const existingCount = ord.outputVersions?.length || 0;
-    const nextVer = `v1.${existingCount}`;
     setOutputForm({
-      version: nextVer,
-      filename: `${(ord.details?.projectName || 'Project').replace(/\s+/g, '_')}_MASTER_${nextVer}.mp4`,
-      format: 'ProRes 422 HQ / Web 4K',
-      resolution: ord.details?.platform?.includes('9:16') ? '2160x3840 @ 60fps' : '3840x2160 @ 24fps',
+      version: `v1.${existingCount}`,
       runtime: ord.details?.targetLength || '00:10:00',
-      sizeDisplay: '1.45 GB',
       downloadUrl: '',
-      notes: ''
+      notes: '',
     });
     setUploadError('');
-  };
-
-  // Reject empty links and known throwaway/sample hosts so a real hosted
-  // deliverable URL is always what gets recorded against the order.
-  const SAMPLE_HOSTS = ['commondatastorage.googleapis.com', 'sample-videos.com', 'test-videos.co.uk'];
-  const isRealDeliverableUrl = (url) => {
-    try {
-      const u = new URL(url.trim());
-      if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-      return !SAMPLE_HOSTS.some(h => u.hostname === h || u.hostname.endsWith(`.${h}`));
-    } catch {
-      return false;
-    }
+    setShowUploadModal(ord);
   };
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (!showUploadModal) return;
-
     if (!isRealDeliverableUrl(outputForm.downloadUrl)) {
       setUploadError('Enter the real hosted URL of the finished cut (e.g. a client Drive / Frame.io / CDN link). Sample or placeholder links are not accepted.');
       return;
     }
     setUploadError('');
-    await uploadEditorOutput(showUploadModal.id, outputForm);
-    setShowUploadModal(null);
+    const res = await uploadEditorOutput(showUploadModal.id, {
+      version: outputForm.version,
+      runtime: outputForm.runtime,
+      downloadUrl: outputForm.downloadUrl,
+      notes: outputForm.notes,
+    });
+    if (res.success) {
+      setShowUploadModal(null);
+      setLane('review');
+    }
   };
 
-  const selected = activeProject || assignedOrders[0] || null;
-
   return (
-    <div className="max-w-[1360px] mx-auto px-4 sm:px-6 md:px-8 py-10 space-y-8 bg-[#111111] text-[#FAFAF5]">
-      
-      {/* Editor Identity Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
-        <div className="space-y-1">
-          <div className="text-xs font-mono text-[#00CDB8] uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#00CDB8]" />
-            <span>EDITOR PRODUCTION SUITE &middot; ASSIGNED QUEUE ONLY</span>
+    <Scene variant="dark-editorial" className="min-h-screen pb-24 pt-8 md:pt-12">
+      <div className="mx-auto max-w-[1360px] px-4 md:px-8">
+        <div className="mb-8 flex flex-col justify-between gap-4 border-b border-[var(--border)] pb-6 md:flex-row md:items-center">
+          <div className="space-y-1">
+            <p className="type-eyebrow flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+              Editor production suite &middot; assigned queue only
+            </p>
+            <h1 className="type-h1">{user?.name?.split(' ')[0] || 'Editor'}&rsquo;s queue</h1>
+            <p className="text-[12px] text-[var(--foreground-muted)]">
+              {user?.specialty || 'Commercial & Narrative Post-Production'} &middot; access restricted to your assigned briefs only.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Assigned Queue: {user?.name || 'Lead Video Editor'}
-          </h1>
-          <p className="text-xs text-[#A1A1A6]">
-            {user?.specialty || 'Commercial & Narrative Post-Production'} &middot; Access is restricted strictly to your assigned client briefs.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 bg-[#1A1A1A] border border-white/10 px-4 py-2.5 rounded-[10px] text-xs font-mono">
-          <div>
-            <span className="text-[#6F7075] block text-[10px] uppercase">ACTIVE QUEUE</span>
-            <span className="text-[#00CDB8] font-bold text-sm">
-              {assignedOrders.length} <span className="text-[#6F7075]">/ {user?.maxCapacity || 3} Active</span>
-            </span>
+          <div className="u-frame flex items-center gap-4 px-4 py-2.5 font-mono text-[12px]">
+            <div>
+              <span className="block text-[10px] uppercase text-[var(--foreground-subtle)]">Active queue</span>
+              <span className="text-[15px] font-bold text-[var(--primary)]">
+                {assignedOrders.length} <span className="font-normal text-[var(--foreground-subtle)]">/ {user?.maxCapacity || 3} capacity</span>
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {assignedOrders.length === 0 ? (
-        <div className="bg-[#1A1A1A] border border-white/10 rounded-[16px] p-12 text-center space-y-3 max-w-md mx-auto">
-          <Scissors size={28} className="mx-auto text-[#6F7075]" />
-          <h3 className="text-base font-semibold text-white">No assigned projects</h3>
-          <p className="text-xs text-[#A1A1A6] leading-relaxed">
-            Studio administration has not routed any active briefs to your queue. Once an order is approved and assigned to you, it will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* Assigned Projects List (7 Cols) */}
-          <div className="lg:col-span-7 space-y-3">
-            <div className="flex justify-between items-center text-xs font-mono text-[#6F7075] px-1">
-              <span>ACTIVE PROJECTS ({assignedOrders.length})</span>
-              <span>SELECT TO INSPECT BRIEF</span>
+        {assignedOrders.length === 0 ? (
+          <Scene variant="black" className="flex min-h-[50vh] items-center justify-center py-16">
+            <EmptyState
+              icon={Scissors}
+              title="No assigned projects"
+              body="Studio administration has not routed any active briefs to your queue. Once an order is approved and assigned to you, it appears here."
+            />
+          </Scene>
+        ) : (
+          <>
+            <div className="mb-6 grid grid-cols-2 gap-x-4 gap-y-0 border-b border-[var(--border)] sm:grid-cols-4 sm:gap-x-6">
+              <button onClick={() => setLane('today')} className="u-focus"><LaneCount label="Today" count={lanes.today.length} active={lane === 'today'} /></button>
+              <button onClick={() => setLane('upcoming')} className="u-focus"><LaneCount label="Upcoming" count={lanes.upcoming.length} active={lane === 'upcoming'} /></button>
+              <button onClick={() => setLane('review')} className="u-focus"><LaneCount label="In Review" count={lanes.review.length} active={lane === 'review'} /></button>
+              <button onClick={() => setLane('completed')} className="u-focus"><LaneCount label="Completed" count={lanes.completed.length} active={lane === 'completed'} /></button>
             </div>
 
-            {assignedOrders.map(ord => {
-              const isSelected = selected?.id === ord.id;
-              return (
-                <div
-                  key={ord.id}
-                  onClick={() => setActiveProject(ord)}
-                  className={`bg-[#1A1A1A] border rounded-[12px] p-5 space-y-3 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-[#00CDB8] shadow-[0_0_15px_rgba(0,205,184,0.15)] ring-1 ring-[#00CDB8]'
-                      : 'border-white/[0.08] hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 font-mono text-xs">
-                        <span className="text-[#00CDB8] font-bold">{ord.id}</span>
-                        <span className="text-[#6F7075]">&bull;</span>
-                        <span className="text-[#A1A1A6]">{ord.details?.platform}</span>
-                      </div>
-                      <h3 className="text-base font-semibold text-white">{ord.details?.projectName}</h3>
-                      <div className="text-xs text-[#6F7075]">Client: {ord.customerName} ({ord.customerEmail})</div>
-                    </div>
-
-                    <StatusBadge status={ord.status} />
-                  </div>
-
-                  {/* Google Drive Link Box for Editor */}
-                  {ord.googleDriveUrl && (
-                    <div className="flex items-center gap-2 p-2 rounded bg-[#111111] border border-white/[0.06] text-xs font-mono text-[#00CDB8] truncate">
-                      <Film size={13} className="shrink-0" />
-                      <span className="truncate">{ord.googleDriveUrl}</span>
-                      <a 
-                        href={ord.googleDriveUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        onClick={e => e.stopPropagation()}
-                        className="text-[#A1A1A6] hover:text-white ml-auto shrink-0 flex items-center gap-1"
-                        title="Open in Google Drive"
-                      >
-                        <span>Open Drive</span>
-                        <ExternalLink size={11} />
-                      </a>
-                    </div>
-                  )}
-
-                  <div className="pt-2 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#6F7075]">
-                    <span>Target Delivery: {ord.deadline}</span>
-
-                    {ord.status === 'In Progress' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openUploadModal(ord);
-                        }}
-                        className="btn-primary text-xs py-1 px-3 font-semibold cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Upload size={12} />
-                        <span>Upload Output Cut</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Project Details Panel (5 Cols) */}
-          <div className="lg:col-span-5 sticky top-24">
-            {selected ? (
-              <div className="bg-[#1A1A1A] border border-white/10 rounded-[14px] p-6 space-y-5 shadow-xl">
-                <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase text-[#00CDB8]">Production Brief</span>
-                    <h2 className="text-lg font-bold text-white">{selected.details?.projectName}</h2>
-                    <div className="text-xs font-mono text-[#6F7075]">{selected.id} &middot; {selected.packageName}</div>
-                  </div>
-                  <StatusBadge status={selected.status} />
-                </div>
-
-                {/* Google Drive Link Box */}
-                {selected.googleDriveUrl && (
-                  <div className="bg-[#111111] border border-white/[0.06] rounded-[10px] p-4 space-y-2 text-xs">
-                    <span className="font-mono text-[10px] uppercase text-[#6F7075] block">Customer Footage Repository</span>
-                    <div className="flex items-center gap-2 font-mono text-xs text-[#00CDB8] break-all">
-                      <Film size={14} className="shrink-0" />
-                      <span className="truncate">{selected.googleDriveUrl}</span>
-                    </div>
-                    <a
-                      href={selected.googleDriveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-ghost text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 w-full mt-2"
-                    >
-                      <span>Access Footage in Google Drive</span>
-                      <ExternalLink size={12} />
-                    </a>
-                  </div>
-                )}
-
-                {/* Requirements */}
-                <div className="bg-[#111111] border border-white/[0.06] rounded-[10px] p-4 space-y-2 text-xs">
-                  <span className="font-mono text-[10px] uppercase text-[#6F7075] block">Editing Directives</span>
-                  <p className="text-[#A1A1A6] leading-relaxed whitespace-pre-line">
-                    {selected.details?.editingInstructions || selected.details?.projectDescription || 'No special directives provided.'}
-                  </p>
-                </div>
-
-                {/* Deliverables List */}
-                <div className="space-y-2 pt-2 border-t border-white/[0.08] text-xs">
-                  <div className="flex justify-between items-center font-mono text-[#6F7075] text-[10px] uppercase">
-                    <span>Delivered Cuts ({selected.outputVersions?.length || 0})</span>
-                  </div>
-
-                  {selected.outputVersions?.length > 0 ? (
-                    <div className="space-y-2">
-                      {selected.outputVersions.map((ver, i) => (
-                        <div key={i} className="bg-[#111111] border border-white/[0.06] p-3 rounded-[8px] space-y-2">
-                          <div className="flex justify-between items-center font-mono">
-                            <span className="px-2 py-0.5 rounded bg-[#00CDB8]/15 text-[#00CDB8] text-[10px]">
-                              {ver.version}
-                            </span>
-                            <span className="text-[#6F7075] text-[11px]">{ver.runtime}</span>
-                          </div>
-                          {ver.notes && <p className="text-xs text-[#A1A1A6] italic">&ldquo;{ver.notes}&rdquo;</p>}
-                          {ver.url && (
-                            <button
-                              onClick={() => setPreviewVideoUrl(ver.url)}
-                              className="btn-ghost text-xs py-1 px-2.5 flex items-center gap-1 cursor-pointer"
-                            >
-                              <Play size={10} /> Preview Cut
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-[#111111] text-[#6F7075] font-mono text-[11px] rounded-[8px]">
-                      No version uploaded yet.
-                    </div>
-                  )}
-                </div>
-
-                {selected.status === 'In Progress' && (
-                  <div className="pt-2 border-t border-white/[0.08]">
-                    <button
-                      onClick={() => openUploadModal(selected)}
-                      className="btn-primary w-full py-2.5 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(0,205,184,0.25)]"
-                    >
-                      <Upload size={13} />
-                      <span>Submit Output Cut for Review</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+            {laneOrders.length === 0 ? (
+              <EmptyState icon={Film} title="Nothing in this lane" body="Projects will appear here as their status changes." />
             ) : (
-              <div className="bg-[#1A1A1A] border border-white/10 rounded-[14px] p-8 text-center text-xs text-[#6F7075] font-mono">
-                Select a project to inspect directives and footage link.
+              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+                {/* Lane list (7 cols) */}
+                <div className="lg:col-span-7">
+                  <Stagger speed="micro" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {laneOrders.map((ord) => {
+                      const isSelected = active?.id === ord.id;
+                      const ratio = ord.outputVersions?.length ? '9:16' : '4:5';
+                      return (
+                        <StaggerItem key={ord.id}>
+                          <div
+                            className="space-y-3 border p-4 transition-colors"
+                            style={{
+                              borderRadius: 'var(--radius-editorial)',
+                              borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
+                              background: 'var(--surface)',
+                            }}
+                          >
+                            <button onClick={() => setActiveId(ord.id)} className="u-focus block w-full space-y-3 text-left">
+                              <div className="flex gap-3">
+                                <AspectFrame ratio={ratio} radius="media" className="w-20 shrink-0">
+                                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-alt)]">
+                                    <Film size={16} className="text-[var(--foreground-subtle)]" />
+                                  </div>
+                                </AspectFrame>
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <div className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--foreground-subtle)]">
+                                    <span className="text-[var(--primary)]">{ord.id}</span>
+                                    <span>&middot;</span>
+                                    <span className="truncate">{ord.details?.platform}</span>
+                                  </div>
+                                  <div className="truncate text-[13px] font-semibold text-[var(--foreground-strong)]">{ord.details?.projectName}</div>
+                                  <div className="truncate text-[11px] text-[var(--foreground-subtle)]">{ord.customerName}</div>
+                                  <StatusBadge status={ord.status} />
+                                </div>
+                              </div>
+                            </button>
+                            <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 font-mono text-[11px] text-[var(--foreground-subtle)]">
+                              <span>Due {ord.deadline}</span>
+                              {ord.status === 'In Progress' && (
+                                <button
+                                  onClick={() => openUploadModal(ord)}
+                                  className="btn-primary !py-1 !px-2.5 !text-[11px]"
+                                >
+                                  <Upload size={11} /> Upload
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </StaggerItem>
+                      );
+                    })}
+                  </Stagger>
+                </div>
+
+                {/* Workspace panel (5 cols) */}
+                <div className="lg:sticky lg:top-24 lg:col-span-5">
+                  {active && (
+                    <Reveal key={active.id} className="u-frame space-y-5 p-6">
+                      <div className="flex items-start justify-between border-b border-[var(--border)] pb-4">
+                        <div>
+                          <span className="type-eyebrow">Production brief</span>
+                          <h2 className="type-h3">{active.details?.projectName}</h2>
+                          <div className="font-mono text-[11px] text-[var(--foreground-subtle)]">{active.id} &middot; {active.packageName}</div>
+                        </div>
+                        <StatusBadge status={active.status} />
+                      </div>
+
+                      {active.googleDriveUrl && (
+                        <div className="space-y-2 border border-[var(--border)] p-4 text-[12px]" style={{ borderRadius: 'var(--radius-editorial)' }}>
+                          <span className="block font-mono text-[10px] uppercase text-[var(--foreground-subtle)]">Customer footage repository</span>
+                          <div className="flex items-center gap-2 truncate font-mono text-[12px] text-[var(--primary)]">
+                            <Film size={13} className="shrink-0" />
+                            <span className="truncate">{active.googleDriveUrl}</span>
+                          </div>
+                          <a href={active.googleDriveUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost mt-2 w-full justify-center !py-1.5 !text-[11px]">
+                            Access footage in Google Drive <ExternalLink size={11} />
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="space-y-2 border border-[var(--border)] p-4 text-[12px]" style={{ borderRadius: 'var(--radius-editorial)' }}>
+                        <span className="block font-mono text-[10px] uppercase text-[var(--foreground-subtle)]">Editing directives</span>
+                        <p className="whitespace-pre-line leading-relaxed text-[var(--foreground-muted)]">
+                          {active.details?.editingInstructions || active.details?.projectDescription || 'No special directives provided.'}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 border-t border-[var(--border)] pt-3">
+                        <div className="font-mono text-[10px] uppercase text-[var(--foreground-subtle)]">
+                          Delivered cuts ({active.outputVersions?.length || 0})
+                        </div>
+                        {active.outputVersions?.length > 0 ? (
+                          <div className="space-y-2">
+                            {active.outputVersions.map((ver) => (
+                              <div key={ver.id || ver.version} className="space-y-2 border border-[var(--border)] p-3" style={{ borderRadius: 'var(--radius-editorial)' }}>
+                                <div className="flex items-center justify-between font-mono text-[11px]">
+                                  <span className="u-tag !py-0.5">{ver.version}</span>
+                                  <span className="text-[var(--foreground-subtle)]">{ver.runtime}</span>
+                                </div>
+                                {ver.notes && <p className="text-[12px] italic text-[var(--foreground-muted)]">&ldquo;{ver.notes}&rdquo;</p>}
+                                {ver.url && (
+                                  <button onClick={() => setPreviewVersion(ver)} className="btn-ghost !py-1 !px-2.5 !text-[11px]">
+                                    <Play size={10} /> Preview cut
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="border border-dashed border-[var(--border)] p-3 font-mono text-[11px] text-[var(--foreground-subtle)]" style={{ borderRadius: 'var(--radius-editorial)' }}>
+                            No version uploaded yet.
+                          </div>
+                        )}
+                      </div>
+
+                      {active.status === 'In Progress' && (
+                        <button onClick={() => openUploadModal(active)} className="btn-primary w-full justify-center">
+                          <Upload size={13} /> Submit output cut for review
+                        </button>
+                      )}
+                      {active.status === 'Review' && (
+                        <p className="text-center font-mono text-[11px] text-[var(--foreground-subtle)]">
+                          Awaiting client review of latest cut.
+                        </p>
+                      )}
+                    </Reveal>
+                  )}
+                </div>
               </div>
             )}
-          </div>
-
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       {/* Upload Output Cut Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="bg-[#1A1A1A] border border-white/15 rounded-[16px] max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/[0.08] pb-3">
+      {showUploadModal && outputForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
+          <div className="u-frame w-full max-w-lg space-y-5 p-6">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div>
-                <span className="text-xs font-mono text-[#00CDB8] uppercase">DELIVERABLE CUT INTAKE</span>
-                <h3 className="text-lg font-bold text-white">Record Finished Master Cut</h3>
+                <span className="type-eyebrow">Deliverable cut intake</span>
+                <h3 className="type-h3">Record finished master cut</h3>
               </div>
-              <button onClick={() => setShowUploadModal(null)} className="text-[#A1A1A6] hover:text-white">✕</button>
+              <button onClick={() => setShowUploadModal(null)} className="u-focus text-[var(--foreground-subtle)] hover:text-[var(--foreground-strong)]" aria-label="Close">
+                <X size={16} />
+              </button>
             </div>
 
-            <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleUploadSubmit} className="space-y-4">
               {uploadError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-[8px]">
+                <div className="border p-3 text-[12px]" style={{ borderRadius: 'var(--radius-editorial)', borderColor: 'var(--error)', background: 'var(--error-muted)', color: 'var(--error)' }}>
                   {uploadError}
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="block font-mono uppercase text-[#A1A1A6]">Version Tag</label>
-                  <input
-                    type="text"
-                    required
-                    value={outputForm.version}
-                    onChange={e => setOutputForm({ ...outputForm, version: e.target.value })}
-                    className="triphoria-input text-xs font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="block font-mono uppercase text-[#A1A1A6]">Cut Runtime</label>
-                  <input
-                    type="text"
-                    required
-                    value={outputForm.runtime}
-                    onChange={e => setOutputForm({ ...outputForm, runtime: e.target.value })}
-                    placeholder="00:12:30"
-                    className="triphoria-input text-xs font-mono"
-                  />
-                </div>
+                <Field label="Version Tag" value={outputForm.version} onChange={(e) => setOutputForm({ ...outputForm, version: e.target.value })} required />
+                <Field label="Cut Runtime" value={outputForm.runtime} onChange={(e) => setOutputForm({ ...outputForm, runtime: e.target.value })} placeholder="00:12:30" required />
               </div>
-
-              <div className="space-y-1">
-                <label className="block font-mono uppercase text-[#A1A1A6]">Filename / Deliverable Title</label>
-                <input
-                  type="text"
-                  required
-                  value={outputForm.filename}
-                  onChange={e => setOutputForm({ ...outputForm, filename: e.target.value })}
-                  className="triphoria-input text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-mono uppercase text-[#A1A1A6]">Hosted Deliverable URL</label>
-                <input
-                  type="url"
-                  required
-                  value={outputForm.downloadUrl}
-                  onChange={e => { setOutputForm({ ...outputForm, downloadUrl: e.target.value }); setUploadError(''); }}
-                  placeholder="https://drive.google.com/... or Frame.io / CDN link to the finished cut"
-                  className="triphoria-input text-xs font-mono"
-                />
-                <p className="text-[10px] text-[#6F7075]">Paste the actual link to the exported master. TRIPHORIA stores this reference, not the video file.</p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-mono uppercase text-[#A1A1A6]">Editor Delivery Notes</label>
-                <textarea
-                  rows={3}
-                  value={outputForm.notes}
-                  onChange={e => setOutputForm({ ...outputForm, notes: e.target.value })}
-                  placeholder="Explain key cuts, revisions, music choices, or questions for client review..."
-                  className="triphoria-input text-xs resize-y"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(null)}
-                  className="btn-ghost text-xs py-2 px-4 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary text-xs py-2 px-5 font-semibold cursor-pointer"
-                >
-                  Submit Cut for Review &rarr;
-                </button>
+              <Field
+                label="Hosted Deliverable URL"
+                type="url"
+                required
+                value={outputForm.downloadUrl}
+                onChange={(e) => { setOutputForm({ ...outputForm, downloadUrl: e.target.value }); setUploadError(''); }}
+                placeholder="https://drive.google.com/... or Frame.io / CDN link to the finished cut"
+                hint="TRIPHORIA stores this reference, not the video file, until durable storage is configured."
+              />
+              <Field
+                as="textarea"
+                rows={3}
+                label="Editor Delivery Notes"
+                value={outputForm.notes}
+                onChange={(e) => setOutputForm({ ...outputForm, notes: e.target.value })}
+                placeholder="Explain key cuts, revisions, music choices, or questions for client review..."
+              />
+              <div className="flex justify-end gap-2.5 border-t border-[var(--border)] pt-3">
+                <button type="button" onClick={() => setShowUploadModal(null)} className="btn-ghost">Cancel</button>
+                <button type="submit" className="btn-primary">Submit cut for review <ArrowRight size={14} /></button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Video Preview Modal */}
-      {previewVideoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="bg-[#1A1A1A] text-white rounded-[14px] overflow-hidden max-w-3xl w-full border border-white/15 shadow-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-white/[0.08]">
-              <span className="text-xs font-mono text-[#00CDB8] uppercase tracking-wider">Output Cut Preview</span>
-              <button onClick={() => setPreviewVideoUrl(null)} className="text-[#A1A1A6] hover:text-white text-xs font-mono px-2 py-1">✕</button>
-            </div>
-            <div className="aspect-video bg-black rounded-[8px] overflow-hidden border border-white/10">
-              <VideoPlayer src={previewVideoUrl} autoPlay />
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
+      <VideoModal
+        open={!!previewVersion}
+        onClose={() => setPreviewVersion(null)}
+        src={previewVersion?.url}
+        title={previewVersion ? `${active?.details?.projectName} · ${previewVersion.version}` : ''}
+        eyebrow="Output cut preview"
+        ratio={active?.outputVersions?.length ? '9:16' : '16:9'}
+      />
+    </Scene>
   );
-};
+}
+
+export default EditorDashboard;

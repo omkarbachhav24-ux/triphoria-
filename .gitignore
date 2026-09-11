@@ -38,3 +38,9 @@ dist-ssr
 *.sw?
 
 test-results/
+
+# Redesign QA scratch / working notes (never commit)
+_rd-*.mjs
+_*.mjs
+CODEBASE-MAP.md
+docs/PHASE-C-SUPABASE-DATA-AUDIT.md

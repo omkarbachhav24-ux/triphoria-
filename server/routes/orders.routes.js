@@ -295,7 +295,7 @@ ordersRouter.post('/:id/approve', requireRole('admin'), async (req, res) => {
 
   try {
     await withTransaction(async (client) => {
-      const order = (await client.query('SELECT status FROM orders WHERE id = $1', [id])).rows[0];
+      const order = (await client.query('SELECT status FROM orders WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!order) {
         throw new HttpError(404, { error: 'Order not found' });
       }

@@ -6,11 +6,17 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure local uploads directory exists
+// Local uploads directory — NEVER created at module load. Vercel's runtime
+// filesystem is read-only outside /tmp; a top-level mkdirSync here throws
+// EROFS on cold start and crashes the entire serverless function (every API
+// route, not just upload routes, since app.js transitively imports this
+// module) before any request handler even runs. This was a real production
+// outage, not a theoretical one — see docs/INCIDENT-2026-09-12-API-DOWN.md.
+// The directory is created lazily, only by the actual local-write path
+// (saveUploadedStream, below), which itself is only reachable in
+// environments where LocalStorageProvider is selected (never on Vercel —
+// see server/providers/index.js selectStorageProvider()).
 const uploadsDir = path.resolve(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // Secret key for HMAC signing of presigned upload/download tokens.
 // There is NO fallback: a missing STORAGE_SECRET must fail, never silently

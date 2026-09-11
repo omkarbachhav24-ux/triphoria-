@@ -4,10 +4,11 @@ import {
   Layers, ExternalLink, Save, Search, Grid3x3, List, X,
 } from 'lucide-react';
 import { useCMS } from '../../context/CMSContext';
-import { VideoPlayer, getAutoThumbnail } from '../../components/common/VideoPlayer';
+import { getAutoThumbnail } from '../../components/common/VideoPlayer';
 import { Scene } from '../../components/ui/Scene';
 import { Reveal, Stagger, StaggerItem } from '../../components/motion/Reveal';
 import { AspectFrame } from '../../components/video/AspectFrame';
+import { VideoModal } from '../../components/video/VideoModal';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Field } from '../../components/ui/Field';
 
@@ -83,7 +84,7 @@ export function CMSManagerPage({ onNavigate }) {
     platform: 'Instagram Reel', url: '', title: '', caption: '', thumbnail: '', likes: '', isPublished: true,
   });
 
-  const [previewVideoUrl, setPreviewVideoUrl] = useState(null);
+  const [previewProject, setPreviewProject] = useState(null);
 
   const handleSaveFeatured = async (e) => {
     e.preventDefault();
@@ -356,7 +357,7 @@ export function CMSManagerPage({ onNavigate }) {
                             {proj.isPublished ? 'Live' : 'Draft'}
                           </button>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setPreviewVideoUrl(proj.videoUrl)} className="u-focus p-1.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground-strong)]" title="Preview"><Eye size={13} /></button>
+                            <button onClick={() => setPreviewProject(proj)} className="u-focus p-1.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground-strong)]" title="Preview"><Eye size={13} /></button>
                             <button onClick={() => openEditProjectModal(proj)} className="u-focus p-1.5 text-[var(--foreground-subtle)] hover:text-[var(--foreground-strong)]" title="Edit"><Edit3 size={13} /></button>
                             <button
                               onClick={() => { if (window.confirm(`Delete portfolio project "${proj.title}"?`)) deletePortfolioProject(proj.id); }}
@@ -404,7 +405,7 @@ export function CMSManagerPage({ onNavigate }) {
                       >
                         {proj.isPublished ? 'Live' : 'Draft'}
                       </button>
-                      <button onClick={() => setPreviewVideoUrl(proj.videoUrl)} className="btn-ghost !p-2" title="Preview"><Eye size={13} /></button>
+                      <button onClick={() => setPreviewProject(proj)} className="btn-ghost !p-2" title="Preview"><Eye size={13} /></button>
                       <button onClick={() => openEditProjectModal(proj)} className="btn-ghost !p-2" title="Edit"><Edit3 size={13} /></button>
                       <button
                         onClick={() => { if (window.confirm(`Delete portfolio project "${proj.title}"?`)) deletePortfolioProject(proj.id); }}
@@ -574,22 +575,14 @@ export function CMSManagerPage({ onNavigate }) {
         </div>
       )}
 
-      {/* Video Preview Modal */}
-      {previewVideoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
-          <div className="u-frame w-full max-w-3xl space-y-4 overflow-hidden p-5">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-              <span className="type-eyebrow">Media preview</span>
-              <button onClick={() => setPreviewVideoUrl(null)} className="u-focus text-[var(--foreground-subtle)] hover:text-[var(--foreground-strong)]" aria-label="Close"><X size={16} /></button>
-            </div>
-            <AspectFrame ratio="16:9" radius="media">
-              <div className="absolute inset-0">
-                <VideoPlayer src={previewVideoUrl} autoPlay />
-              </div>
-            </AspectFrame>
-          </div>
-        </div>
-      )}
+      <VideoModal
+        open={!!previewProject}
+        onClose={() => setPreviewProject(null)}
+        src={previewProject?.videoUrl}
+        title={previewProject?.title}
+        eyebrow="Media preview"
+        ratio={previewProject?.aspectRatio || '16:9'}
+      />
     </Scene>
   );
 }

@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Search, Menu, X, ArrowLeft, ArrowRight, Check, Copy, 
-  Sparkles, ExternalLink, Zap, Sliders, Hand, Layers, Film, 
-  BookOpen, Code2, Play, Info, AlertTriangle
+import {
+  Search, Menu, X, ArrowLeft, ArrowRight, Check, Copy,
+  Sparkles, Info
 } from 'lucide-react';
 
 import { MotionButton } from '../../components/motion-ui/MotionButton';
-import { CopyButton } from '../../components/motion-ui/CopyButton';
 import { CodeBlock } from '../../components/motion-ui/CodeBlock';
 import { RuntimeSwitcher } from '../../components/motion-ui/RuntimeSwitcher';
 import { LiveExample } from '../../components/motion-ui/LiveExample';
 import { CommandMenu } from '../../components/motion-ui/CommandMenu';
-import { motionPresets } from '../../design-system/motionPresets';
 
 const DOC_SECTIONS = [
   {

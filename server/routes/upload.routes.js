@@ -8,11 +8,12 @@ import {
   generatePresignedDownload, getLocalFilePath, saveUploadedStream 
 } from '../storage.js';
 import { logAuditEvent } from './auth.routes.js';
+import { uploadLimiter } from '../rateLimit.js';
 
 export const uploadRouter = express.Router();
 
 // 1. Authorize Upload (Presigned Upload Token)
-uploadRouter.post('/authorize-upload', requireAuth, async (req, res) => {
+uploadRouter.post('/authorize-upload', requireAuth, uploadLimiter, async (req, res) => {
   const { orderId = 'PENDING', filename, sizeBytes, mimeType } = req.body;
   const user = req.user;
 

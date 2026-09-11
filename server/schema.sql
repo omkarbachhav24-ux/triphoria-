@@ -148,8 +148,29 @@ ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS social_url       TEXT;
 ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS playback_url     TEXT;
 ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT DEFAULT '16:9';
 
+-- B7 redesign-support columns (additive only — approved 4-column set).
+-- media_type/tags let the CMS and video library classify content beyond the
+-- free-text `category` field without redefining it; aspect_ratio/media_type
+-- on orders let the order flow persist the customer's chosen format instead
+-- of inferring it from `platform` text. All existing rows get NULL/[] and
+-- continue to work unchanged; no data is migrated or destroyed.
+ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS media_type       TEXT;
+ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS tags             TEXT[] DEFAULT '{}';
+ALTER TABLE orders        ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT;
+ALTER TABLE orders        ADD COLUMN IF NOT EXISTS media_type       TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_sessions_token       ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_orders_client        ON orders(client_id);
 CREATE INDEX IF NOT EXISTS idx_orders_editor        ON orders(assigned_editor_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status        ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at);
+
+-- B7 hardening: indexes for the remaining foreign-key lookups and hot query
+-- paths (order detail hydration, CMS public listing) that were missing.
+CREATE INDEX IF NOT EXISTS idx_sessions_user        ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_order_files_order    ON order_files(order_id);
+CREATE INDEX IF NOT EXISTS idx_output_versions_order ON output_versions(order_id);
+CREATE INDEX IF NOT EXISTS idx_output_versions_editor ON output_versions(editor_id);
+CREATE INDEX IF NOT EXISTS idx_cms_projects_published ON cms_projects(is_published);
+CREATE INDEX IF NOT EXISTS idx_cms_projects_featured  ON cms_projects(is_featured, featured_slot) WHERE is_featured = 1;
+CREATE INDEX IF NOT EXISTS idx_cms_social_published  ON cms_social(is_published);

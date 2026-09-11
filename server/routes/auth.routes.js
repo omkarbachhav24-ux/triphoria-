@@ -5,6 +5,7 @@ import {
   createSession, deleteSession, setSessionCookie, clearSessionCookie,
   requireAuth, requireRole
 } from '../auth.js';
+import { loginLimiter, registerLimiter, onboardingLimiter } from '../rateLimit.js';
 
 export const authRouter = express.Router();
 
@@ -32,7 +33,7 @@ authRouter.get('/me', (req, res) => {
 });
 
 // 2. Login (Admin, Editor, Client)
-authRouter.post('/login', async (req, res) => {
+authRouter.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -110,7 +111,7 @@ authRouter.post('/logout', async (req, res) => {
 });
 
 // 4. Client Registration
-authRouter.post('/register', async (req, res) => {
+authRouter.post('/register', registerLimiter, async (req, res) => {
   const { name, email, password, organization } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -173,7 +174,7 @@ authRouter.get('/editors', requireRole('admin'), async (req, res) => {
 });
 
 // 6. Onboard New Editor (Admin Only)
-authRouter.post('/editors', requireRole('admin'), async (req, res) => {
+authRouter.post('/editors', requireRole('admin'), onboardingLimiter, async (req, res) => {
   const { name, email, password, specialty, maxCapacity, avatar } = req.body;
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required' });

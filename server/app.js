@@ -25,7 +25,20 @@ app.set('trust proxy', 1);
 // ---------------------------------------------------------------------------
 // When FRONTEND_URL is set (cross-origin API host) CORS is locked to it;
 // otherwise the request origin is reflected (same-origin deploys, local dev).
+// B14 red-team hardening: a production deployment that forgets to set
+// FRONTEND_URL would silently fall into the reflect-any-origin branch with
+// credentials:true — loud startup warning so that misconfiguration is
+// never silent, without changing runtime behavior (still no code change to
+// same-origin/local-dev, which legitimately relies on reflection).
 const allowedOrigin = process.env.FRONTEND_URL;
+if (!allowedOrigin && process.env.NODE_ENV === 'production') {
+  console.warn(
+    '[SECURITY WARNING] FRONTEND_URL is not set in production. ' +
+    'CORS is reflecting any request Origin with credentials enabled. ' +
+    'Set FRONTEND_URL to your exact deployment origin unless this is ' +
+    'intentionally a single-origin deployment (frontend and API on the same host).'
+  );
+}
 app.use(cors({
   origin: allowedOrigin || true,
   credentials: true

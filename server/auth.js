@@ -15,6 +15,19 @@ export async function createSession(userId) {
     [sessionId, userId, token, expiresAt, now]
   );
 
+  // Sessions are only ever deleted explicitly on logout; a session that
+  // simply expires (browser closed, cookie cleared, 30-day TTL reached
+  // without an explicit sign-out) was never cleaned up, so the table grows
+  // unboundedly forever. getUserFromToken() already excludes expired rows
+  // from auth (not a security issue), but this is a real storage/DB-hygiene
+  // gap. Piggyback a best-effort sweep on login rather than adding cron
+  // infrastructure the app doesn't otherwise need — cheap, and login is
+  // exactly the moment a new row is being added anyway. Fire-and-forget:
+  // never let a cleanup failure block the login it's riding along with.
+  query('DELETE FROM sessions WHERE expires_at::timestamptz < now()').catch((err) => {
+    console.warn('[AUTH] Expired-session cleanup sweep failed (non-fatal):', err.message);
+  });
+
   return { token, expiresAt };
 }
 

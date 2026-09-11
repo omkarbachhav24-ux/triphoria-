@@ -174,3 +174,37 @@ CREATE INDEX IF NOT EXISTS idx_output_versions_editor ON output_versions(editor_
 CREATE INDEX IF NOT EXISTS idx_cms_projects_published ON cms_projects(is_published);
 CREATE INDEX IF NOT EXISTS idx_cms_projects_featured  ON cms_projects(is_featured, featured_slot) WHERE is_featured = 1;
 CREATE INDEX IF NOT EXISTS idx_cms_social_published  ON cms_social(is_published);
+
+-- -----------------------------------------------------------------------
+-- Row Level Security (defense-in-depth, added during the 2026-09-12
+-- production-readiness audit; addresses Supabase advisor findings
+-- "RLS Disabled in Public" on all 10 tables and "Sensitive Columns
+-- Exposed" on sessions).
+--
+-- TRIPHORIA's authorization boundary is the Express API (requireAuth /
+-- requireRole middleware + explicit ownership checks in every route
+-- handler), not Supabase Auth + RLS. DATABASE_URL connects as the
+-- `postgres` role, which has BYPASSRLS — confirmed live
+-- (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user).
+-- Enabling RLS here therefore changes NOTHING about how the Express API
+-- itself behaves; it exists purely to close the gap for any OTHER
+-- connection path to this database (the Supabase dashboard's anon/
+-- authenticated roles via PostgREST if ever exposed, a leaked
+-- DATABASE_URL used by a lower-privileged tool, or future code that
+-- talks to Supabase directly). No policies are defined for anon/
+-- authenticated on any table below, which means those roles get zero
+-- access — correct, since the app does not use Supabase Auth identities
+-- for any of this data. If a future feature needs the browser to read
+-- Supabase directly, add narrow, explicit policies at that time rather
+-- than opening these tables broadly now.
+-- -----------------------------------------------------------------------
+ALTER TABLE users               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_files         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE output_versions     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage_lifecycle   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_events        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cms_projects        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cms_social          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_records ENABLE ROW LEVEL SECURITY;

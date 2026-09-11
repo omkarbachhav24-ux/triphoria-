@@ -170,8 +170,7 @@ export function TextReveal({ text = '', as = 'span', className = '', delay = 0, 
           <motion.span
             style={{ display: 'inline-block', willChange: 'transform' }}
             initial={{ y: '110%' }}
-            whileInView={{ y: 0 }}
-            viewport={VIEWPORT}
+            animate={{ y: 0 }}
             transition={{ ...motionPresets.editorial, delay: delay + i * stagger }}
           >
             {word}
@@ -205,8 +204,7 @@ export function ImageReveal({ children, className = '', delay = 0, from = 'botto
       className={className}
       style={{ willChange: 'clip-path, transform' }}
       initial={{ clipPath: clipFrom, scale: 1.06 }}
-      whileInView={{ clipPath: 'inset(0 0 0 0)', scale: 1 }}
-      viewport={VIEWPORT}
+      animate={{ clipPath: 'inset(0 0 0 0)', scale: 1 }}
       transition={{ ...motionPresets.editorial, duration: 0.8, delay }}
     >
       {children}

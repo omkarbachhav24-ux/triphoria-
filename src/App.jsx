@@ -12,6 +12,7 @@ import { AuthPage } from './pages/customer/AuthPage';
 import { OrderFlowPage } from './pages/customer/OrderFlowPage';
 import { OrderSuccessPage } from './pages/customer/OrderSuccessPage';
 import { CustomerDashboard } from './pages/customer/CustomerDashboard';
+import { CustomerProjectPage } from './pages/customer/CustomerProjectPage';
 
 // Editor Pages
 import { EditorDashboard } from './pages/editor/EditorDashboard';
@@ -30,9 +31,15 @@ export function App() {
   // Custom router state
   const initialPath = window.location.pathname || '/';
   const isOrderSuccess = initialPath.startsWith('/order/success/');
-  const [currentPath, setCurrentPath] = useState(isOrderSuccess ? '/order/success' : initialPath);
+  const isProjectDeepLink = initialPath.startsWith('/dashboard/project/');
+  const [currentPath, setCurrentPath] = useState(
+    isOrderSuccess ? '/order/success' : isProjectDeepLink ? '/dashboard/project' : initialPath
+  );
   const [selectedPackage, setSelectedPackage] = useState('Pro Creator');
   const [orderSuccessId, setOrderSuccessId] = useState(isOrderSuccess ? initialPath.replace('/order/success/', '') : '');
+  const [activeProjectId, setActiveProjectId] = useState(
+    isProjectDeepLink ? initialPath.replace('/dashboard/project/', '') : ''
+  );
 
   // Handle route navigation
   const navigateTo = (path) => {
@@ -80,6 +87,15 @@ export function App() {
       return;
     }
 
+    if (path.startsWith('/dashboard/project/')) {
+      const id = path.replace('/dashboard/project/', '');
+      setActiveProjectId(id);
+      setCurrentPath('/dashboard/project');
+      window.history.pushState({}, '', '/dashboard/project/' + id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setCurrentPath(path);
     window.history.pushState({}, '', path);
     try {
@@ -107,6 +123,9 @@ export function App() {
       if (p.startsWith('/order/success/')) {
         setOrderSuccessId(p.replace('/order/success/', ''));
         setCurrentPath('/order/success');
+      } else if (p.startsWith('/dashboard/project/')) {
+        setActiveProjectId(p.replace('/dashboard/project/', ''));
+        setCurrentPath('/dashboard/project');
       } else {
         setCurrentPath(p);
       }
@@ -192,6 +211,19 @@ export function App() {
           return <AuthPage onNavigate={navigateTo} />;
         }
         return <CustomerDashboard onNavigate={navigateTo} />;
+      case '/dashboard/project':
+        if (loading) {
+          return (
+            <div className="min-h-[60vh] flex items-center justify-center font-mono text-xs text-[#00CDB8]">
+              <span className="w-2 h-2 rounded-full bg-[#00CDB8] animate-pulse mr-2" />
+              AUTHENTICATING CLIENT DOSSIER...
+            </div>
+          );
+        }
+        if (!user) {
+          return <AuthPage onNavigate={navigateTo} />;
+        }
+        return <CustomerProjectPage orderId={activeProjectId} onNavigate={navigateTo} />;
       default:
         return <HomePage onNavigate={navigateTo} onSelectPackage={setSelectedPackage} />;
     }

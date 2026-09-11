@@ -2,7 +2,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import { query, queryOne, hashPassword, verifyPassword } from '../db.js';
 import {
-  createSession, deleteSession, setSessionCookie, clearSessionCookie,
+  createSession, deleteSession, deleteAllSessionsForUser, setSessionCookie, clearSessionCookie,
   requireAuth, requireRole
 } from '../auth.js';
 import { loginLimiter, registerLimiter, onboardingLimiter } from '../rateLimit.js';
@@ -245,6 +245,10 @@ authRouter.delete('/editors/:id', requireRole('admin'), async (req, res) => {
   }
 
   await query("UPDATE users SET status = 'deactivated' WHERE id = $1 AND role = 'editor'", [id]);
+  // Cut off any session already live for this account immediately, rather
+  // than only blocking future logins - see getUserFromToken() for the
+  // companion per-request check (defense-in-depth: either alone suffices).
+  await deleteAllSessionsForUser(id);
 
   await logAuditEvent({
     actorId: req.user.id,

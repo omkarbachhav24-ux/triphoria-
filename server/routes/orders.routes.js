@@ -182,12 +182,18 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
     mediaType = null
   } = req.body;
 
-  if (!projectName) {
-    return res.status(400).json({ error: 'Project name is required' });
+  // Type-check every string input before using string methods on it. A
+  // client sending an object/array/number instead of a string (accidental
+  // or adversarial) previously reached `.trim()` unchecked and threw an
+  // uncaught TypeError -> 500 with the internal variable name and failing
+  // method leaked in the response body. Reproduced and fixed during the
+  // 2026-09-12 audit.
+  if (typeof projectName !== 'string' || !projectName.trim()) {
+    return res.status(400).json({ error: 'Project name is required and must be a string' });
   }
 
-  if (!googleDriveUrl || !googleDriveUrl.trim()) {
-    return res.status(400).json({ error: 'Google Drive source footage link is strictly required' });
+  if (typeof googleDriveUrl !== 'string' || !googleDriveUrl.trim()) {
+    return res.status(400).json({ error: 'Google Drive source footage link is strictly required and must be a string' });
   }
 
   if (aspectRatio !== null && !VALID_ASPECT_RATIOS.has(aspectRatio)) {

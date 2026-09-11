@@ -21,6 +21,7 @@ import { EditorDashboard } from './pages/editor/EditorDashboard';
 import { BusinessDashboard } from './pages/admin/BusinessDashboard';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { EditorsManagementPage } from './pages/admin/EditorsManagementPage';
+import { CustomerCRMPage } from './pages/admin/CustomerCRMPage';
 import { CMSManagerPage } from './pages/admin/CMSManagerPage';
 import { AuditLogsPage } from './pages/admin/AuditLogsPage';
 import { MotionDocsPage } from './pages/docs/MotionDocsPage';
@@ -159,6 +160,8 @@ export function App() {
           return <AdminOrdersPage onNavigate={navigateTo} />;
         case '/admin/editors':
           return <EditorsManagementPage onNavigate={navigateTo} />;
+        case '/admin/customers':
+          return <CustomerCRMPage onNavigate={navigateTo} />;
         case '/admin/cms':
           return <CMSManagerPage onNavigate={navigateTo} />;
         case '/admin/audit-logs':

@@ -99,8 +99,7 @@ export function Stagger({
       <Comp
         className={className}
         initial="hidden"
-        whileInView="show"
-        viewport={VIEWPORT}
+        animate="show"
         variants={{
           hidden: {},
           show: { transition: { staggerChildren: stagger, delayChildren: delay } },

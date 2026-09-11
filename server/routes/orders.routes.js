@@ -3,8 +3,16 @@ import crypto from 'node:crypto';
 import { query, queryOne, withTransaction } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { logAuditEvent } from './auth.routes.js';
+import { uploadLimiter } from '../rateLimit.js';
 
 export const ordersRouter = express.Router();
+
+// Server-authoritative enums for the B7 additive order columns. The client
+// (OrderFlowPage) sends these, but they are never trusted blindly — an
+// invalid/unrecognized value is rejected with 400 rather than silently
+// stored, same treatment as every other order-creation input.
+const VALID_ASPECT_RATIOS = new Set(['9:16', '4:5', '1:1', '16:9']);
+const VALID_MEDIA_TYPES = new Set(['Reel', 'Short', 'TikTok', 'YouTube', 'Long-form', 'Podcast', 'Commercial', 'Other']);
 
 // Lightweight typed error so transaction bodies can signal an HTTP response
 // (with automatic ROLLBACK) instead of returning res mid-transaction.
@@ -66,7 +74,9 @@ async function formatOrderResponse(row) {
       editingStyle: row.editing_style,
       targetLength: row.target_length,
       projectDescription: row.instructions,
-      editingInstructions: row.instructions
+      editingInstructions: row.instructions,
+      aspectRatio: row.aspect_ratio,
+      mediaType: row.media_type
     },
     rawFootage: files.map(f => ({
       ...f,
@@ -167,15 +177,31 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
     instructions = '',
     googleDriveUrl = '',
     deadline,
-    rawFootage = []
+    rawFootage = [],
+    aspectRatio = null,
+    mediaType = null
   } = req.body;
 
-  if (!projectName) {
-    return res.status(400).json({ error: 'Project name is required' });
+  // Type-check every string input before using string methods on it. A
+  // client sending an object/array/number instead of a string (accidental
+  // or adversarial) previously reached `.trim()` unchecked and threw an
+  // uncaught TypeError -> 500 with the internal variable name and failing
+  // method leaked in the response body. Reproduced and fixed during the
+  // 2026-09-12 audit.
+  if (typeof projectName !== 'string' || !projectName.trim()) {
+    return res.status(400).json({ error: 'Project name is required and must be a string' });
   }
 
-  if (!googleDriveUrl || !googleDriveUrl.trim()) {
-    return res.status(400).json({ error: 'Google Drive source footage link is strictly required' });
+  if (typeof googleDriveUrl !== 'string' || !googleDriveUrl.trim()) {
+    return res.status(400).json({ error: 'Google Drive source footage link is strictly required and must be a string' });
+  }
+
+  if (aspectRatio !== null && !VALID_ASPECT_RATIOS.has(aspectRatio)) {
+    return res.status(400).json({ error: `Invalid aspectRatio. Must be one of: ${[...VALID_ASPECT_RATIOS].join(', ')}` });
+  }
+
+  if (mediaType !== null && !VALID_MEDIA_TYPES.has(mediaType)) {
+    return res.status(400).json({ error: `Invalid mediaType. Must be one of: ${[...VALID_MEDIA_TYPES].join(', ')}` });
   }
 
   // Validate Google Drive URL strictly
@@ -204,11 +230,13 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
       await client.query(
         `INSERT INTO orders (
           id, client_id, status, package_name, editing_style, platform,
-          target_length, project_name, instructions, google_drive_url, deadline, created_at, updated_at, idempotency_key
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+          target_length, project_name, instructions, google_drive_url, deadline, created_at, updated_at, idempotency_key,
+          aspect_ratio, media_type
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           orderId, user.id, 'Pending Approval', packageName, editingStyle, platform,
-          targetLength, projectName, instructions, googleDriveUrl || null, targetDeadline, now, now, idempotencyKey || null
+          targetLength, projectName, instructions, googleDriveUrl || null, targetDeadline, now, now, idempotencyKey || null,
+          aspectRatio, mediaType
         ]
       );
 
@@ -403,7 +431,7 @@ ordersRouter.post('/:id/reassign', requireRole('admin'), async (req, res) => {
 });
 
 // 7. State Transition: In Progress -> Review (Editor Uploads Cut)
-ordersRouter.post('/:id/outputs', requireAuth, async (req, res) => {
+ordersRouter.post('/:id/outputs', requireAuth, uploadLimiter, async (req, res) => {
   const { id } = req.params;
   const user = req.user;
 

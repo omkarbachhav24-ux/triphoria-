@@ -5,6 +5,10 @@ import { logAuditEvent } from './auth.routes.js';
 
 export const cmsRouter = express.Router();
 
+// Server-authoritative enum for the B7 cms_projects.media_type column, used
+// by the admin Video Library filters (ALL/REELS/SHORTS/LONG FORM/FEATURED).
+const VALID_CMS_MEDIA_TYPES = new Set(['Reel', 'Short', 'LongForm', 'Commercial', 'Documentary', 'Other']);
+
 function formatProject(row) {
   if (!row) return null;
   const playback = row.playback_url || row.video_url;
@@ -22,6 +26,8 @@ function formatProject(row) {
     socialUrl: row.social_url || '',
     playbackUrl: playback,
     aspectRatio: row.aspect_ratio || '16:9',
+    mediaType: row.media_type || null,
+    tags: row.tags || [],
     isFeatured: Boolean(row.is_featured),
     featuredSlot: row.featured_slot,
     isPublished: Boolean(row.is_published),
@@ -78,12 +84,20 @@ cmsRouter.post('/portfolio', requireRole('admin'), async (req, res) => {
     title, client, format, runtime, category, description,
     thumbnail, videoUrl, socialProvider = 'none', socialUrl = '', playbackUrl = '', aspectRatio = '16:9',
     camera, colorGrade, audioMix, pacing,
-    isFeatured = false, featuredSlot = null, isPublished = true
+    isFeatured = false, featuredSlot = null, isPublished = true,
+    mediaType = null, tags = []
   } = req.body;
 
   const activePlayback = playbackUrl || videoUrl;
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
+  }
+
+  if (mediaType !== null && !VALID_CMS_MEDIA_TYPES.has(mediaType)) {
+    return res.status(400).json({ error: `Invalid mediaType. Must be one of: ${[...VALID_CMS_MEDIA_TYPES].join(', ')}` });
+  }
+  if (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string')) {
+    return res.status(400).json({ error: 'tags must be an array of strings' });
   }
 
   const id = `WORK-${Date.now().toString().slice(-4)}`;
@@ -94,14 +108,14 @@ cmsRouter.post('/portfolio', requireRole('admin'), async (req, res) => {
       id, title, client, format, runtime, category, description,
       thumbnail_url, video_url, social_provider, social_url, playback_url, aspect_ratio,
       camera, color_grade, audio_mix, pacing,
-      is_featured, featured_slot, is_published, created_at
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+      is_featured, featured_slot, is_published, created_at, media_type, tags
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
     [
       id, title, client || 'TRIPHORIA Client', format || '4K UHD', runtime || '01:30',
       category || 'Commercial & Brand', description || '',
       thumbnail || '', activePlayback || '', socialProvider, socialUrl, activePlayback, aspectRatio,
       camera || '', colorGrade || '', audioMix || '', pacing || '',
-      isFeatured ? 1 : 0, featuredSlot || null, isPublished ? 1 : 0, now
+      isFeatured ? 1 : 0, featuredSlot || null, isPublished ? 1 : 0, now, mediaType, tags
     ]
   );
 
@@ -125,10 +139,18 @@ cmsRouter.put('/portfolio/:id', requireRole('admin'), async (req, res) => {
     title, client, format, runtime, category, description,
     thumbnail, videoUrl, socialProvider, socialUrl, playbackUrl, aspectRatio,
     camera, colorGrade, audioMix, pacing,
-    isFeatured, featuredSlot, isPublished
+    isFeatured, featuredSlot, isPublished,
+    mediaType, tags
   } = req.body;
 
   const activePlayback = playbackUrl || videoUrl;
+
+  if (mediaType !== undefined && mediaType !== null && !VALID_CMS_MEDIA_TYPES.has(mediaType)) {
+    return res.status(400).json({ error: `Invalid mediaType. Must be one of: ${[...VALID_CMS_MEDIA_TYPES].join(', ')}` });
+  }
+  if (tags !== undefined && (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string'))) {
+    return res.status(400).json({ error: 'tags must be an array of strings' });
+  }
 
   await query(
     `UPDATE cms_projects SET
@@ -150,8 +172,10 @@ cmsRouter.put('/portfolio/:id', requireRole('admin'), async (req, res) => {
       pacing = coalesce($16, pacing),
       is_featured = coalesce($17, is_featured),
       featured_slot = $18,
-      is_published = coalesce($19, is_published)
-    WHERE id = $20`,
+      is_published = coalesce($19, is_published),
+      media_type = coalesce($20, media_type),
+      tags = coalesce($21, tags)
+    WHERE id = $22`,
     [
       title, client, format, runtime, category, description,
       thumbnail, activePlayback, socialProvider, socialUrl, activePlayback, aspectRatio,
@@ -159,6 +183,8 @@ cmsRouter.put('/portfolio/:id', requireRole('admin'), async (req, res) => {
       typeof isFeatured === 'boolean' ? (isFeatured ? 1 : 0) : null,
       featuredSlot !== undefined ? featuredSlot : null,
       typeof isPublished === 'boolean' ? (isPublished ? 1 : 0) : null,
+      mediaType !== undefined ? mediaType : null,
+      tags !== undefined ? tags : null,
       id
     ]
   );

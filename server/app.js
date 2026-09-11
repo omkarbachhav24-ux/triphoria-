@@ -25,7 +25,20 @@ app.set('trust proxy', 1);
 // ---------------------------------------------------------------------------
 // When FRONTEND_URL is set (cross-origin API host) CORS is locked to it;
 // otherwise the request origin is reflected (same-origin deploys, local dev).
+// B14 red-team hardening: a production deployment that forgets to set
+// FRONTEND_URL would silently fall into the reflect-any-origin branch with
+// credentials:true — loud startup warning so that misconfiguration is
+// never silent, without changing runtime behavior (still no code change to
+// same-origin/local-dev, which legitimately relies on reflection).
 const allowedOrigin = process.env.FRONTEND_URL;
+if (!allowedOrigin && process.env.NODE_ENV === 'production') {
+  console.warn(
+    '[SECURITY WARNING] FRONTEND_URL is not set in production. ' +
+    'CORS is reflecting any request Origin with credentials enabled. ' +
+    'Set FRONTEND_URL to your exact deployment origin unless this is ' +
+    'intentionally a single-origin deployment (frontend and API on the same host).'
+  );
+}
 app.use(cors({
   origin: allowedOrigin || true,
   credentials: true
@@ -76,10 +89,33 @@ app.use('/api/audit-logs', auditRouter);
 app.use('/api/storage', uploadRouter);
 
 // Global Error Handler
+//
+// err.message was previously returned to the client verbatim for every
+// unhandled exception. Route handlers that deliberately throw a typed
+// HttpError (status/code/body already shaped for the client, e.g. the
+// approve/reject/complete transitions in orders.routes.js) rely on that -
+// their err.message IS the intended user-facing text. But an unexpected
+// exception (a TypeError from an unvalidated input reaching a string
+// method, a database driver error, anything not deliberately thrown by
+// this codebase) also has err.message, and that message can describe
+// internal implementation details - a variable name, a method call, a
+// query fragment - never fabricated per se, but more than a client needs
+// or should see. Reproduced during the 2026-09-12 audit (an object sent
+// where a string was expected surfaced "googleDriveUrl.trim is not a
+// function" to the client). Distinguish the two cases by whether the
+// error carries an explicit status: a deliberate HttpError always sets one
+// (see the HttpError class in orders.routes.js and every requireAuth/
+// requireRole rejection), so an error with no status is, by construction,
+// something unhandled - genuinely unexpected - and gets a generic message
+// in production. The full error is always logged server-side either way.
 app.use((err, req, res, next) => {
   console.error('[UNHANDLED SERVER ERROR]', err);
+  const isDeliberate = typeof err.status === 'number';
+  const safeMessage = isDeliberate || process.env.NODE_ENV !== 'production'
+    ? (err.message || 'Internal Production Server Error')
+    : 'Internal Production Server Error';
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Production Server Error',
+    error: safeMessage,
     code: err.code || 'SERVER_ERROR'
   });
 });

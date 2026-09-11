@@ -3,16 +3,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { queryOne } from '../db.js';
 import { requireAuth } from '../auth.js';
-import { 
-  generatePresignedUpload, verifyStorageToken, 
-  generatePresignedDownload, getLocalFilePath, saveUploadedStream 
+import {
+  generatePresignedUpload, verifyStorageToken,
+  generatePresignedDownload, getLocalFilePath
 } from '../storage.js';
+import { selectStorageProvider } from '../providers/index.js';
 import { logAuditEvent } from './auth.routes.js';
+import { uploadLimiter } from '../rateLimit.js';
 
 export const uploadRouter = express.Router();
 
 // 1. Authorize Upload (Presigned Upload Token)
-uploadRouter.post('/authorize-upload', requireAuth, async (req, res) => {
+uploadRouter.post('/authorize-upload', requireAuth, uploadLimiter, async (req, res) => {
   const { orderId = 'PENDING', filename, sizeBytes, mimeType } = req.body;
   const user = req.user;
 
@@ -63,19 +65,31 @@ uploadRouter.put('/upload', async (req, res) => {
 
   const { storageKey, filename } = verification.data;
 
+  const provider = selectStorageProvider();
+  if (!provider) {
+    // Genuinely no durable storage is configured for this deployment (e.g.
+    // running on Vercel with no SUPABASE_SERVICE_ROLE_KEY / bucket set yet).
+    // Refuse honestly rather than accepting bytes we cannot actually keep —
+    // see server/providers/SupabaseStorageProvider.js for what unblocks this.
+    return res.status(503).json({
+      error: 'Durable storage is not configured for this deployment. Raw binary upload is unavailable; record a hosted deliverable URL instead.',
+      code: 'STORAGE_NOT_CONFIGURED'
+    });
+  }
+
   try {
-    const result = await saveUploadedStream(req, storageKey);
+    const result = await provider.upload(req, storageKey);
     res.json({
       success: true,
-      message: 'File ingested and verified',
+      message: `File ingested and verified via ${provider.name}`,
       filename,
       storageKey: result.storageKey,
-      bytesWritten: result.bytesWritten,
+      bytesWritten: result.sizeBytes,
       checksum: result.checksum
     });
   } catch (err) {
     console.error('[UPLOAD ERROR]', err);
-    res.status(500).json({ error: 'Failed to write file stream to object storage' });
+    res.status(err.status || 500).json({ error: err.message || 'Failed to write file stream to object storage', code: err.code });
   }
 });
 

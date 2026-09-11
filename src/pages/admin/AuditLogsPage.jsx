@@ -1,141 +1,139 @@
 import React, { useState } from 'react';
-import { History, Shield, Lock, Search, Filter, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { useAuditLog } from '../../context/AuditLogContext';
+import { Scene } from '../../components/ui/Scene';
+import { Reveal } from '../../components/motion/Reveal';
+import { EmptyState } from '../../components/ui/EmptyState';
 
-export const AuditLogsPage = ({ onNavigate }) => {
-  // AuditLogContext exposes `auditLogs`; alias it locally as `logs`.
-  const { auditLogs: logs = [] } = useAuditLog();
+export function AuditLogsPage({ onNavigate }) {
+  const { auditLogs: logs = [], pagination, page, goToPage, loading } = useAuditLog();
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
 
-  const filteredLogs = logs.filter(l => {
+  const filteredLogs = logs.filter((l) => {
     const term = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       (l.actor && l.actor.toLowerCase().includes(term)) ||
       (l.details && l.details.toLowerCase().includes(term)) ||
       (l.action && l.action.toLowerCase().includes(term)) ||
       (l.entityId && l.entityId.toLowerCase().includes(term));
-
     const matchesAction = actionFilter === 'All' || l.action.includes(actionFilter);
     return matchesSearch && matchesAction;
   });
 
+  const actionColor = (action) => {
+    if (action.includes('APPROVED') || action.includes('COMPLETED')) return { background: 'var(--success-muted)', color: 'var(--success)' };
+    if (action.includes('REJECTED') || action.includes('PURGED')) return { background: 'var(--error-muted)', color: 'var(--error)' };
+    if (action.includes('ASSIGN') || action.includes('CREATED')) return { background: 'var(--primary)', color: 'var(--on-primary)', opacity: 0.85 };
+    return { background: 'var(--surface-alt)', color: 'var(--foreground-muted)' };
+  };
+
   return (
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-10 space-y-8 bg-[#111111] text-[#FAFAF5]">
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase tracking-wider text-[#00CDB8]">
-              TRIPHORIA TRUST &amp; TRACEABILITY LEDGER
-            </span>
-            <span className="text-[10px] bg-[#00CDB8]/15 text-[#00CDB8] px-2 py-0.5 rounded-full font-mono font-medium">
-              IMMUTABLE APPEND-ONLY
-            </span>
+    <Scene variant="dark-editorial" className="min-h-screen pb-24 pt-8 md:pt-12">
+      <div className="mx-auto max-w-[1400px] px-4 md:px-8">
+        <div className="mb-6 flex flex-col justify-between gap-4 border-b border-[var(--border)] pb-6 md:flex-row md:items-center">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="type-eyebrow">TRIPHORIA trust &amp; traceability ledger</span>
+              <span className="u-tag !py-0.5">Immutable append-only</span>
+            </div>
+            <h1 className="type-h1">Operations &amp; state mutation audit trail</h1>
+            <p className="max-w-xl text-[12px] text-[var(--foreground-muted)]">
+              Authoritative chronological records for every project intake, Google Drive verification, editor assignment, cut upload, and delivery approval.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Operations &amp; State Mutation Audit Trail
-          </h1>
-          <p className="text-xs text-[#A1A1A6]">
-            Authoritative chronological records for every project intake, Google Drive verification, editor assignment, cut upload, and delivery approval.
-          </p>
+          <button onClick={() => onNavigate('/admin/dashboard')} className="btn-ghost self-start md:self-auto">
+            &larr; Return to Dashboard
+          </button>
         </div>
 
-        <button 
-          onClick={() => onNavigate('/admin/dashboard')}
-          className="btn-ghost text-xs py-2 px-3 self-start md:self-auto cursor-pointer"
-        >
-          &larr; Return to Dashboard
-        </button>
-      </div>
+        <Reveal className="u-frame mb-6 flex flex-col items-center justify-between gap-4 p-4 sm:flex-row">
+          <div className="relative w-full sm:w-96">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground-subtle)]" />
+            <input
+              type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by actor, action, order ID, or keyword..."
+              className="triphoria-input w-full py-2 pl-9 text-[12px] font-mono"
+            />
+          </div>
+          <div className="flex w-full items-center gap-3 sm:w-auto">
+            <Filter size={14} className="text-[var(--foreground-subtle)]" />
+            <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} className="triphoria-input py-1.5 text-[12px] font-mono">
+              <option value="All">All Operations ({pagination.total || logs.length})</option>
+              <option value="ORDER">Project Lifecycles</option>
+              <option value="EDITOR">Editor Assignments</option>
+              <option value="OUTPUT">Output Cuts &amp; Deliveries</option>
+              <option value="CMS">CMS &amp; Content Mutations</option>
+              <option value="LOGIN">Security &amp; Sessions</option>
+            </select>
+          </div>
+        </Reveal>
 
-      {/* Search & Filter Bar */}
-      <div className="bg-[#1A1A1A] border border-white/[0.08] p-4 rounded-[12px] flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full sm:w-96">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F7075]" />
-          <input 
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search by actor, action, order ID, or keyword..."
-            className="triphoria-input pl-9 text-xs font-mono w-full"
-          />
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Filter size={14} className="text-[#6F7075]" />
-          <select 
-            value={actionFilter}
-            onChange={e => setActionFilter(e.target.value)}
-            className="triphoria-input py-1.5 text-xs font-mono cursor-pointer"
-          >
-            <option value="All">All Operations ({logs.length})</option>
-            <option value="ORDER">Project Lifecycles</option>
-            <option value="EDITOR">Editor Assignments</option>
-            <option value="OUTPUT">Output Cuts &amp; Deliveries</option>
-            <option value="CMS">CMS &amp; Content Mutations</option>
-            <option value="LOGIN">Security &amp; Sessions</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Audit Logs Table */}
-      <div className="bg-[#1A1A1A] border border-white/10 rounded-[14px] overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#111111] text-[#6F7075] font-mono uppercase text-[11px] border-b border-white/[0.08]">
-              <tr>
-                <th className="py-3.5 px-4">Timestamp (UTC)</th>
-                <th className="py-3.5 px-4">Action Type</th>
-                <th className="py-3.5 px-4">Entity Target</th>
-                <th className="py-3.5 px-4">Actor</th>
-                <th className="py-3.5 px-6">Event Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.06] font-mono">
-              {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#6F7075] font-sans">
-                    No matching audit records found.
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 px-4 text-[#A1A1A6] whitespace-nowrap">
-                      {new Date(log.timestamp).toISOString().replace('T', ' ').substring(0, 19)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] uppercase font-semibold ${
-                        log.action.includes('APPROVED') || log.action.includes('COMPLETED')
-                          ? 'bg-[#34D399]/15 text-[#34D399]'
-                          : log.action.includes('REJECTED')
-                          ? 'bg-red-500/15 text-red-400'
-                          : log.action.includes('ASSIGN') || log.action.includes('CREATED')
-                          ? 'bg-[#00CDB8]/15 text-[#00CDB8]'
-                          : 'bg-white/[0.05] text-[#A1A1A6]'
-                      }`}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-white font-medium whitespace-nowrap">
-                      {(log.entity || log.entityType) ? `${log.entity || log.entityType} / ` : ''}{log.entityId}
-                    </td>
-                    <td className="py-3 px-4 text-[#A1A1A6] whitespace-nowrap">
-                      {log.actor}
-                    </td>
-                    <td className="py-3 px-6 text-[#FAFAF5] font-sans text-xs max-w-lg leading-relaxed">
-                      {log.details}
-                    </td>
+        {filteredLogs.length === 0 ? (
+          <EmptyState icon={History} title="No matching audit records" body="Adjust your search or filter — the underlying ledger is immutable and append-only." />
+        ) : (
+          <Reveal className="u-frame overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[12px]">
+                <thead className="border-b border-[var(--border)] font-mono text-[11px] uppercase text-[var(--foreground-subtle)]" style={{ background: 'var(--surface-alt)' }}>
+                  <tr>
+                    <th className="px-4 py-3.5">Timestamp (UTC)</th>
+                    <th className="px-4 py-3.5">Action Type</th>
+                    <th className="px-4 py-3.5">Entity Target</th>
+                    <th className="px-4 py-3.5">Actor</th>
+                    <th className="px-6 py-3.5">Event Details</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)] font-mono">
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id} className="transition-colors hover:bg-[var(--surface-hover)]">
+                      <td className="whitespace-nowrap px-4 py-3 text-[var(--foreground-muted)]">
+                        {new Date(log.timestamp).toISOString().replace('T', ' ').substring(0, 19)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase" style={actionColor(log.action)}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-[var(--foreground-strong)]">
+                        {(log.entity || log.entityType) ? `${log.entity || log.entityType} / ` : ''}{log.entityId}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-[var(--foreground-muted)]">{log.actor}</td>
+                      <td className="max-w-lg px-6 py-3 font-sans text-[12px] leading-relaxed text-[var(--foreground)]">{log.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-    </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-3 font-mono text-[11px] text-[var(--foreground-subtle)]">
+                <span>Page {pagination.page} of {pagination.totalPages} &middot; {pagination.total} total events</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page <= 1 || loading}
+                    className="u-focus flex items-center gap-1 border border-[var(--border)] px-2.5 py-1.5 disabled:opacity-40"
+                    style={{ borderRadius: 'var(--radius-editorial)' }}
+                  >
+                    <ChevronLeft size={13} /> Prev
+                  </button>
+                  <button
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page >= pagination.totalPages || loading}
+                    className="u-focus flex items-center gap-1 border border-[var(--border)] px-2.5 py-1.5 disabled:opacity-40"
+                    style={{ borderRadius: 'var(--radius-editorial)' }}
+                  >
+                    Next <ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </Reveal>
+        )}
+      </div>
+    </Scene>
   );
-};
+}
+
+export default AuditLogsPage;

@@ -15,6 +15,19 @@ export async function createSession(userId) {
     [sessionId, userId, token, expiresAt, now]
   );
 
+  // Sessions are only ever deleted explicitly on logout; a session that
+  // simply expires (browser closed, cookie cleared, 30-day TTL reached
+  // without an explicit sign-out) was never cleaned up, so the table grows
+  // unboundedly forever. getUserFromToken() already excludes expired rows
+  // from auth (not a security issue), but this is a real storage/DB-hygiene
+  // gap. Piggyback a best-effort sweep on login rather than adding cron
+  // infrastructure the app doesn't otherwise need — cheap, and login is
+  // exactly the moment a new row is being added anyway. Fire-and-forget:
+  // never let a cleanup failure block the login it's riding along with.
+  query('DELETE FROM sessions WHERE expires_at::timestamptz < now()').catch((err) => {
+    console.warn('[AUTH] Expired-session cleanup sweep failed (non-fatal):', err.message);
+  });
+
   return { token, expiresAt };
 }
 
@@ -25,13 +38,30 @@ export async function deleteSession(token) {
 
 export async function getUserFromToken(token) {
   if (!token) return null;
+  // status != 'deactivated' is checked on EVERY request, not just at login.
+  // Without this, an account deactivated mid-session keeps full access on
+  // its existing (still-unexpired, up to 30 days) session token, since the
+  // only prior enforcement was the 403 check in the login route itself -
+  // which a session that already exists never passes through again.
+  // Reproduced and confirmed during the 2026-09-12 audit before this fix.
   return queryOne(
     `SELECT u.id, u.name, u.email, u.role, u.specialty, u.max_capacity, u.avatar_url, u.organization, u.status
        FROM sessions s
        JOIN users u ON s.user_id = u.id
-      WHERE s.token = $1 AND s.expires_at::timestamptz > now()`,
+      WHERE s.token = $1 AND s.expires_at::timestamptz > now() AND u.status != 'deactivated'`,
     [token]
   );
+}
+
+/** Delete every session belonging to a user - used when an account is
+ * deactivated, so existing sessions are cut off immediately rather than
+ * merely being unable to log in again. Defense-in-depth alongside the
+ * status check in getUserFromToken() above (either alone would be enough;
+ * both together mean a deactivation takes effect even if one check were
+ * ever removed by a future refactor). */
+export async function deleteAllSessionsForUser(userId) {
+  if (!userId) return;
+  await query('DELETE FROM sessions WHERE user_id = $1', [userId]);
 }
 
 export function setSessionCookie(res, token) {

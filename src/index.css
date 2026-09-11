@@ -165,6 +165,153 @@
     --radius-images: var(--radius-2xl);
     --radius-inputs: var(--radius-md);
     --radius-buttons: var(--radius-full);
+
+    /* ═══════════════════════════════════════════════
+       REDESIGN — LIGHT-SCENE PALETTE + ON-COLORS
+       (see docs/TRIPHORIA-DESIGN-SYSTEM.md)
+    ═══════════════════════════════════════════════ */
+    --paper: #FAFAF5;          /* cream field */
+    --paper-2: #FFFFFF;        /* pure white surface on cream */
+    --paper-3: #F4F3EA;        /* recessed panel on cream */
+    --pale-lime: #F1FFC9;      /* soft lime field */
+    --ink: #0B0C0E;            /* text/marks on light scenes */
+    --ink-muted: #52605E;      /* muted technical grey (brief) */
+    --lime: #D4FF00;           /* brief-spec highlighter lime */
+
+    /* text colour that sits ON a filled control */
+    --on-primary: #0B0C0E;
+    --on-accent: #0B0C0E;
+
+    /* REDESIGN — radius discipline: editorial containers are near-sharp,
+       media frames get a small radius, pills stay round. Do NOT reach for
+       --radius-xl / --radius-2xl on new work. */
+    --radius-editorial: 2px;
+    --radius-media: 6px;
+    --radius-panel: 10px;
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCENE SYSTEM
+     A <Scene variant> wrapper rebinds the semantic tokens for its subtree
+     so a section can flip between cream / black / green / teal / lime /
+     dark-editorial without per-component overrides.
+     Default (no data-scene) === "black" (the app shell).
+  ═══════════════════════════════════════════════ */
+  .scene {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  [data-scene='paper'] {
+    --background: var(--paper);
+    --background-elevated: var(--paper-2);
+    --surface: var(--paper-2);
+    --surface-alt: var(--paper-3);
+    --surface-hover: #EFEEE3;
+    --foreground: #16170F;
+    --foreground-strong: #0B0C0E;
+    --foreground-muted: #52605E;
+    --foreground-subtle: #7C857F;
+    --foreground-dim: #9AA39C;
+    --border: rgba(11, 12, 14, 0.12);
+    --border-subtle: rgba(11, 12, 14, 0.07);
+    --border-strong: rgba(11, 12, 14, 0.24);
+    --primary: #007E72;                 /* darker teal for contrast on cream */
+    --primary-hover: #00695F;
+    --on-primary: #FAFAF5;
+    --accent: #B7CC00;                  /* lime dulled for legibility on cream */
+    --on-accent: #0B0C0E;
+    --shadow-glow-primary: none;
+    --shadow-glow-accent: none;
+  }
+
+  [data-scene='pale-lime'] {
+    --background: var(--pale-lime);
+    --background-elevated: #FBFFEC;
+    --surface: #FBFFEC;
+    --surface-alt: #E9F7BE;
+    --foreground: #171B0C;
+    --foreground-strong: #0B0C0E;
+    --foreground-muted: #55603A;
+    --foreground-subtle: #7E8A5E;
+    --border: rgba(11, 12, 14, 0.14);
+    --border-subtle: rgba(11, 12, 14, 0.08);
+    --border-strong: rgba(11, 12, 14, 0.26);
+    --primary: #0B0C0E;
+    --primary-hover: #1C1E22;
+    --on-primary: #F1FFC9;
+    --shadow-glow-primary: none;
+  }
+
+  [data-scene='green'] {
+    --background: #04322F;
+    --background-elevated: #0A403B;
+    --surface: #0A403B;
+    --surface-alt: #0E4A44;
+    --surface-hover: #135049;
+    --foreground: #EAF6F2;
+    --foreground-strong: #FFFFFF;
+    --foreground-muted: #9EC7BE;
+    --foreground-subtle: #6E9A91;
+    --border: rgba(255, 255, 255, 0.12);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.22);
+    --primary: #00CDB8;
+    --on-primary: #04241F;
+  }
+
+  [data-scene='teal'] {
+    --background: #00CDB8;
+    --background-elevated: #00B7A5;
+    --surface: rgba(4, 36, 31, 0.06);
+    --surface-alt: rgba(4, 36, 31, 0.10);
+    --foreground: #04241F;
+    --foreground-strong: #001A16;
+    --foreground-muted: rgba(4, 36, 31, 0.66);
+    --foreground-subtle: rgba(4, 36, 31, 0.50);
+    --border: rgba(4, 36, 31, 0.20);
+    --border-subtle: rgba(4, 36, 31, 0.12);
+    --border-strong: rgba(4, 36, 31, 0.34);
+    --primary: #04241F;
+    --primary-hover: #001A16;
+    --on-primary: #E9FFFB;
+    --accent: #0B0C0E;
+    --on-accent: #F1FFC9;
+    --shadow-glow-primary: none;
+    --shadow-glow-accent: none;
+  }
+
+  [data-scene='lime'] {
+    --background: var(--lime);
+    --background-elevated: #E4FF4D;
+    --surface: rgba(20, 23, 10, 0.05);
+    --surface-alt: rgba(20, 23, 10, 0.09);
+    --foreground: #14170A;
+    --foreground-strong: #0B0C0E;
+    --foreground-muted: rgba(20, 23, 10, 0.62);
+    --foreground-subtle: rgba(20, 23, 10, 0.46);
+    --border: rgba(20, 23, 10, 0.20);
+    --border-subtle: rgba(20, 23, 10, 0.12);
+    --border-strong: rgba(20, 23, 10, 0.34);
+    --primary: #0B0C0E;
+    --primary-hover: #1C1E22;
+    --on-primary: #F1FFC9;
+    --accent: #0B0C0E;
+    --on-accent: #D4FF00;
+    --shadow-glow-primary: none;
+    --shadow-glow-accent: none;
+  }
+
+  [data-scene='dark-editorial'] {
+    --background: #07080A;
+    --background-elevated: #101114;
+    --surface: #101114;
+    --surface-alt: #16181C;
+    --foreground: #FAFAF5;
+    --foreground-strong: #FFFFFF;
+    --foreground-muted: #A1A1A6;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-subtle: rgba(255, 255, 255, 0.05);
   }
 
   /* ═══════════════════════════════════════════════
@@ -353,7 +500,7 @@
   justify-content: center;
   gap: 8px;
   background-color: var(--primary);
-  color: var(--background);
+  color: var(--on-primary);
   font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
@@ -383,7 +530,7 @@
   justify-content: center;
   gap: 10px;
   background-color: var(--primary);
-  color: var(--background);
+  color: var(--on-primary);
   font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
@@ -432,7 +579,7 @@
   justify-content: center;
   gap: 8px;
   background-color: var(--accent);
-  color: var(--background);
+  color: var(--on-accent);
   font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 600;
@@ -503,6 +650,61 @@
   background-color: var(--background-elevated);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════
+   REDESIGN — EDITORIAL PRIMITIVES (border-driven, near-sharp)
+═══════════════════════════════════════════════════════ */
+.u-frame {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-editorial);
+}
+.u-frame-elevated {
+  background-color: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+.u-media {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius-media);
+}
+.u-media-sharp {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius-editorial);
+}
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+.u-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--foreground-subtle);
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-editorial);
+}
+.u-tag-solid {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: transparent;
+}
+/* focus ring used by interactive editorial elements */
+.u-focus:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 

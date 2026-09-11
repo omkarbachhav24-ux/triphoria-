@@ -22,9 +22,10 @@ export const EditorDashboard = ({ onNavigate }) => {
     resolution: '3840x2160 @ 24fps',
     runtime: '00:12:30',
     sizeDisplay: '1.20 GB',
-    downloadUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    notes: 'Initial master cut exported with full audio mix and primary color grade.'
+    downloadUrl: '',
+    notes: ''
   });
+  const [uploadError, setUploadError] = useState('');
 
   // Editor sees STRICTLY work assigned to them (§13)
   const assignedOrders = orders.filter(o => o.assignedEditorId === user?.id);
@@ -40,15 +41,34 @@ export const EditorDashboard = ({ onNavigate }) => {
       resolution: ord.details?.platform?.includes('9:16') ? '2160x3840 @ 60fps' : '3840x2160 @ 24fps',
       runtime: ord.details?.targetLength || '00:10:00',
       sizeDisplay: '1.45 GB',
-      downloadUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      notes: 'Initial master cut complete with pacing, audio mix, and primary color grade applied.'
+      downloadUrl: '',
+      notes: ''
     });
+    setUploadError('');
+  };
+
+  // Reject empty links and known throwaway/sample hosts so a real hosted
+  // deliverable URL is always what gets recorded against the order.
+  const SAMPLE_HOSTS = ['commondatastorage.googleapis.com', 'sample-videos.com', 'test-videos.co.uk'];
+  const isRealDeliverableUrl = (url) => {
+    try {
+      const u = new URL(url.trim());
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+      return !SAMPLE_HOSTS.some(h => u.hostname === h || u.hostname.endsWith(`.${h}`));
+    } catch {
+      return false;
+    }
   };
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (!showUploadModal) return;
 
+    if (!isRealDeliverableUrl(outputForm.downloadUrl)) {
+      setUploadError('Enter the real hosted URL of the finished cut (e.g. a client Drive / Frame.io / CDN link). Sample or placeholder links are not accepted.');
+      return;
+    }
+    setUploadError('');
     await uploadEditorOutput(showUploadModal.id, outputForm);
     setShowUploadModal(null);
   };
@@ -278,6 +298,11 @@ export const EditorDashboard = ({ onNavigate }) => {
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs">
+              {uploadError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs p-3 rounded-[8px]">
+                  {uploadError}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block font-mono uppercase text-[#A1A1A6]">Version Tag</label>
@@ -314,15 +339,16 @@ export const EditorDashboard = ({ onNavigate }) => {
               </div>
 
               <div className="space-y-1">
-                <label className="block font-mono uppercase text-[#A1A1A6]">Preview / Delivery URL</label>
+                <label className="block font-mono uppercase text-[#A1A1A6]">Hosted Deliverable URL</label>
                 <input
                   type="url"
                   required
                   value={outputForm.downloadUrl}
-                  onChange={e => setOutputForm({ ...outputForm, downloadUrl: e.target.value })}
-                  placeholder="https://..."
+                  onChange={e => { setOutputForm({ ...outputForm, downloadUrl: e.target.value }); setUploadError(''); }}
+                  placeholder="https://drive.google.com/... or Frame.io / CDN link to the finished cut"
                   className="triphoria-input text-xs font-mono"
                 />
+                <p className="text-[10px] text-[#6F7075]">Paste the actual link to the exported master. TRIPHORIA stores this reference, not the video file.</p>
               </div>
 
               <div className="space-y-1">

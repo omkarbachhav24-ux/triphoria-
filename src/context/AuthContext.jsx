@@ -28,8 +28,14 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Fetch active editors list from database
+  // Fetch active editors list from database.
+  // The roster (names, emails, workload) is admin-only on the server, so this is
+  // a no-op for every other role.
   const refreshEditors = async () => {
+    if (!user || user.role !== 'admin') {
+      setEditors([]);
+      return;
+    }
     try {
       const res = await fetch('/api/auth/editors', { credentials: 'include' });
       if (res.ok) {

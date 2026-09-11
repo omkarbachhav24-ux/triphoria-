@@ -227,7 +227,7 @@ export function HomePage({ onNavigate }) {
                     category={v.category}
                     poster={realThumb(v)}
                     previewSrc={previewFor(v)}
-                    ratio={v.aspectRatio || '9:16'}
+                    ratio="9:16"
                     duration={v.runtime}
                     badge={v.aspectRatio === '16:9' ? 'LONG' : 'REEL'}
                     onOpen={() => setOpenVideo(v)}

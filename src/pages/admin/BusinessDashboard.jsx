@@ -159,13 +159,13 @@ export function BusinessDashboard({ onNavigate }) {
                       style={{ borderRadius: 'var(--radius-editorial)' }}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2 font-mono text-[11px]">
-                            <span className="font-bold" style={{ color: 'var(--warning)' }}>{ord.id}</span>
-                            <span className="text-[var(--foreground-subtle)]">&bull;</span>
-                            <span className="text-[var(--foreground-muted)]">{ord.customerName} ({ord.customerEmail})</span>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2 truncate font-mono text-[11px]">
+                            <span className="shrink-0 font-bold" style={{ color: 'var(--warning)' }}>{ord.id}</span>
+                            <span className="shrink-0 text-[var(--foreground-subtle)]">&bull;</span>
+                            <span className="truncate text-[var(--foreground-muted)]">{ord.customerName} ({ord.customerEmail})</span>
                           </div>
-                          <h3 className="mt-0.5 text-[14px] font-semibold text-[var(--foreground-strong)]">{ord.details?.projectName}</h3>
+                          <h3 className="mt-0.5 truncate text-[14px] font-semibold text-[var(--foreground-strong)]">{ord.details?.projectName}</h3>
                         </div>
                         <StatusBadge status={ord.status} />
                       </div>

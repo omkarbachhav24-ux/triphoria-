@@ -615,6 +615,10 @@
 .btn-danger:hover {
   background-color: var(--error-muted);
 }
+.btn-danger:focus-visible {
+  outline: 2px solid var(--error);
+  outline-offset: 2px;
+}
 
 
 

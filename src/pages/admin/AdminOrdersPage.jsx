@@ -157,14 +157,14 @@ export function AdminOrdersPage({ onNavigate }) {
                   >
                     <button onClick={() => setSelectedOrder(ord)} className="u-focus block w-full space-y-3 text-left">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2 font-mono text-[11px]">
-                            <span className="font-bold text-[var(--primary)]">{ord.id}</span>
-                            <span className="text-[var(--foreground-subtle)]">&bull;</span>
-                            <span className="font-medium text-[var(--foreground-strong)]">{ord.customerName}</span>
-                            <span className="text-[var(--foreground-subtle)]">({ord.customerEmail})</span>
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex min-w-0 items-center gap-2 truncate font-mono text-[11px]">
+                            <span className="shrink-0 font-bold text-[var(--primary)]">{ord.id}</span>
+                            <span className="shrink-0 text-[var(--foreground-subtle)]">&bull;</span>
+                            <span className="truncate font-medium text-[var(--foreground-strong)]">{ord.customerName}</span>
+                            <span className="truncate text-[var(--foreground-subtle)]">({ord.customerEmail})</span>
                           </div>
-                          <h3 className="text-[15px] font-semibold text-[var(--foreground-strong)]">{ord.details?.projectName}</h3>
+                          <h3 className="truncate text-[15px] font-semibold text-[var(--foreground-strong)]">{ord.details?.projectName}</h3>
                         </div>
                         <StatusBadge status={ord.status} />
                       </div>
@@ -211,11 +211,11 @@ export function AdminOrdersPage({ onNavigate }) {
           <div className="lg:sticky lg:top-24 lg:col-span-5">
             {activeOrder ? (
               <Reveal key={activeOrder.id} className="u-frame space-y-5 p-6">
-                <div className="flex items-start justify-between border-b border-[var(--border)] pb-4">
-                  <div>
+                <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] pb-4">
+                  <div className="min-w-0">
                     <span className="type-eyebrow">Project dossier</span>
-                    <h2 className="type-h3">{activeOrder.details?.projectName}</h2>
-                    <div className="font-mono text-[11px] text-[var(--foreground-subtle)]">{activeOrder.id} &middot; {activeOrder.packageName}</div>
+                    <h2 className="type-h3 truncate">{activeOrder.details?.projectName}</h2>
+                    <div className="truncate font-mono text-[11px] text-[var(--foreground-subtle)]">{activeOrder.id} &middot; {activeOrder.packageName}</div>
                   </div>
                   <StatusBadge status={activeOrder.status} />
                 </div>

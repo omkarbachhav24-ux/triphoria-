@@ -26,26 +26,30 @@ app.set('trust proxy', 1);
 // When FRONTEND_URL is set (cross-origin API host) CORS is locked to it;
 // otherwise the request origin is reflected (same-origin deploys, local dev).
 // B14 red-team hardening: a production deployment that forgets to set
-// FRONTEND_URL would silently fall into the reflect-any-origin branch with
-// credentials:true — loud startup warning so that misconfiguration is
-// never silent, without changing runtime behavior (still no code change to
-// same-origin/local-dev, which legitimately relies on reflection).
+// FRONTEND_URL must NOT silently reflect any Origin with credentials:true
+// (M3). In production we fail closed — disable cross-origin entirely unless
+// FRONTEND_URL is set — while local/dev keeps reflection for convenience.
 const allowedOrigin = process.env.FRONTEND_URL;
 if (!allowedOrigin && process.env.NODE_ENV === 'production') {
   console.warn(
-    '[SECURITY WARNING] FRONTEND_URL is not set in production. ' +
-    'CORS is reflecting any request Origin with credentials enabled. ' +
-    'Set FRONTEND_URL to your exact deployment origin unless this is ' +
-    'intentionally a single-origin deployment (frontend and API on the same host).'
+    '[SECURITY] FRONTEND_URL is not set in production. CORS is now failing ' +
+    'closed (no cross-origin credentialed requests). Set FRONTEND_URL to your ' +
+    'deployment origin, or ignore this if frontend and API share one origin.'
   );
 }
 app.use(cors({
-  origin: allowedOrigin || true,
+  // prod + no FRONTEND_URL → false (same-origin only, no reflection).
+  origin: allowedOrigin || (process.env.NODE_ENV === 'production' ? false : true),
   credentials: true
 }));
 app.use(cookieParser());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// L4: only storage/upload traffic needs large bodies. Everything else (auth,
+// orders, cms) gets a small limit so a 50 MB JSON blob can't be buffered
+// against login/register as a memory-amplification DoS.
+app.use('/api/storage', express.json({ limit: '50mb' }));
+app.use('/api/storage', express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Ensure Postgres schema exists & is seeded before handling any request.
 // `ensureSchema()` is memoised, so this is a no-op after the first call.

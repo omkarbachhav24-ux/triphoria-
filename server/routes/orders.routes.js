@@ -4,6 +4,7 @@ import { query, queryOne, withTransaction } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { logAuditEvent } from './auth.routes.js';
 import { uploadLimiter } from '../rateLimit.js';
+import { isSafeStorageKey } from '../storage.js';
 
 export const ordersRouter = express.Router();
 
@@ -192,6 +193,13 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Project name is required and must be a string' });
   }
 
+  // L5: rawFootage must be an array; a non-array would either throw on iteration
+  // or silently mis-process. Normalize to [] and reject non-array explicitly.
+  if (rawFootage != null && !Array.isArray(rawFootage)) {
+    return res.status(400).json({ error: 'rawFootage must be an array' });
+  }
+  const footage = Array.isArray(rawFootage) ? rawFootage : [];
+
   if (typeof googleDriveUrl !== 'string' || !googleDriveUrl.trim()) {
     return res.status(400).json({ error: 'Google Drive source footage link is strictly required and must be a string' });
   }
@@ -241,10 +249,21 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
       );
 
       let totalBytes = 0;
-      for (let i = 0; i < rawFootage.length; i++) {
-        const f = rawFootage[i];
-        const fileBytes = Number(f.sizeBytes) || 500000000;
+      for (let i = 0; i < footage.length; i++) {
+        const f = footage[i] || {};
+        // L5: size must be a finite positive number; NaN/Infinity/negative would
+        // corrupt the BIGINT column or the retention accounting.
+        const parsed = Number(f.sizeBytes);
+        const fileBytes = Number.isFinite(parsed) && parsed > 0 ? parsed : 500000000;
         totalBytes += fileBytes;
+        // H1 (write-side): a client-supplied storageKey must be a safe relative
+        // key. Anything with traversal/absolute/backslash/protocol is rejected
+        // and replaced with the app-generated canonical key, so a malicious key
+        // can never enter the DB and later escape uploads/ on download.
+        const clientKey = typeof f.storageKey === 'string' ? f.storageKey : '';
+        const safeStorageKey = isSafeStorageKey(clientKey)
+          ? clientKey
+          : `orders/${orderId}/raw/${(f.filename || `clip_${i + 1}.mp4`).replace(/[^\w.-]/g, '_')}`;
         await client.query(
           `INSERT INTO order_files (id, order_id, filename, size_bytes, mime_type, storage_key, upload_status, checksum, created_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
@@ -254,7 +273,7 @@ ordersRouter.post('/', requireAuth, async (req, res) => {
             f.filename || `clip_${i + 1}.mp4`,
             fileBytes,
             f.mimeType || 'video/mp4',
-            f.storageKey || `orders/${orderId}/raw/${f.filename || `clip_${i + 1}.mp4`}`,
+            safeStorageKey,
             'completed',
             f.checksum || crypto.createHash('md5').update(f.filename || '').digest('hex'),
             now
@@ -415,6 +434,17 @@ ordersRouter.post('/:id/reassign', requireRole('admin'), async (req, res) => {
     return res.status(400).json({ error: 'Target editor not found or deactivated' });
   }
 
+  // L3: verify the order exists and is in a reassignable state. Previously a
+  // non-existent id updated 0 rows yet returned success, and a Completed/
+  // Rejected/Pending order could be reassigned.
+  const target = await queryOne('SELECT id, status FROM orders WHERE id = $1', [id]);
+  if (!target) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+  if (target.status !== 'In Progress' && target.status !== 'Review') {
+    return res.status(409).json({ error: `Cannot reassign an order in '${target.status}' status.` });
+  }
+
   const now = new Date().toISOString();
   await query('UPDATE orders SET assigned_editor_id = $1, updated_at = $2 WHERE id = $3', [editor.id, now, id]);
 
@@ -460,9 +490,19 @@ ordersRouter.post('/:id/outputs', requireAuth, uploadLimiter, async (req, res) =
 
   const storageKey = req.body.storageKey || req.body.downloadUrl || req.body.url;
 
-  if (!storageKey) {
+  if (!storageKey || typeof storageKey !== 'string') {
     return res.status(400).json({ error: 'Storage key / download URL is required' });
   }
+  // H1 (write-side): a deliverable is either an external http(s) URL (Drive) or
+  // a safe relative storage key. Reject traversal/absolute/backslash keys so a
+  // malicious value can't later escape uploads/ on download.
+  const isHttpUrl = /^https?:\/\//i.test(storageKey);
+  if (!isHttpUrl && !isSafeStorageKey(storageKey)) {
+    return res.status(400).json({ error: 'Invalid storage key' });
+  }
+  // L5: size must be a finite positive number before hitting the BIGINT column.
+  const parsedSize = Number(sizeBytes);
+  const safeSizeBytes = Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 1200000000;
 
   const outputId = `ver-${id}-${Date.now().toString().slice(-4)}`;
   const now = new Date().toISOString();
@@ -474,7 +514,7 @@ ordersRouter.post('/:id/outputs', requireAuth, uploadLimiter, async (req, res) =
           id, order_id, version_tag, editor_id, storage_key, format,
           resolution, runtime, size_bytes, notes, is_authoritative, uploaded_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [outputId, id, version, user.id, storageKey, format, resolution, runtime, Number(sizeBytes), notes, 1, now]
+        [outputId, id, version, user.id, storageKey, format, resolution, runtime, safeSizeBytes, notes, 1, now]
       );
 
       await client.query("UPDATE orders SET status = 'Review', updated_at = $1 WHERE id = $2", [now, id]);

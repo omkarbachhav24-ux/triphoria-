@@ -128,11 +128,41 @@ export function generatePresignedDownload({ storageKey, orderId, filename, expir
 }
 
 /**
- * Get filesystem path from storageKey
+ * Get filesystem path from storageKey.
+ *
+ * SECURITY (H1): resolve against uploadsDir and hard-fail if the result escapes
+ * it. A regex that only strips a *leading* `../` is insufficient — embedded
+ * traversal (`x/../../../../.env`) survives and path.join happily walks out of
+ * the uploads dir. path.resolve + a prefix containment check is the only safe
+ * form. Callers must be prepared for a thrown 400.
  */
 export function getLocalFilePath(storageKey) {
-  const safeKey = storageKey.replace(/^(\.\.[\/\\])+/, '').replace(/^[\\\/]+/, '');
-  return path.join(uploadsDir, safeKey);
+  if (typeof storageKey !== 'string' || !storageKey) {
+    const err = new Error('Invalid storage key'); err.status = 400; throw err;
+  }
+  const resolved = path.resolve(uploadsDir, storageKey);
+  if (resolved !== uploadsDir && !resolved.startsWith(uploadsDir + path.sep)) {
+    const err = new Error('Invalid storage key'); err.status = 400; throw err;
+  }
+  return resolved;
+}
+
+/**
+ * Validate the *shape* of a storageKey before it is persisted, so traversal or
+ * absolute-path keys never enter the database in the first place (defense in
+ * depth for H1 on the write side). Accepts app-generated keys and rejects any
+ * `..` segment, backslashes, absolute paths, or protocol-ish strings.
+ * External deliverable URLs (http/https) are handled separately and are NOT
+ * routed through here.
+ */
+export function isSafeStorageKey(key) {
+  return typeof key === 'string'
+    && key.length > 0
+    && key.length <= 512
+    && !key.includes('\\')
+    && !key.startsWith('/')
+    && !/(^|\/)\.\.(\/|$)/.test(key)
+    && !/^[a-z]+:/i.test(key);
 }
 
 /**

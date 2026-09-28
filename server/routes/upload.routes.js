@@ -161,16 +161,33 @@ uploadRouter.get('/download', (req, res) => {
   }
 
   const { storageKey, filename } = verification.data;
-  const filePath = getLocalFilePath(storageKey);
+
+  // External deliverable links (Drive etc.) are stored as full https URLs, not
+  // local blob keys — handle them before touching the filesystem. Only redirect
+  // to an allowlisted host so a stored key can't become an open redirect (M1).
+  if (/^https?:\/\//i.test(storageKey)) {
+    let host = '';
+    try { host = new URL(storageKey).hostname.toLowerCase(); } catch { host = ''; }
+    const allowed = [
+      'drive.google.com', 'docs.google.com',
+      ...(process.env.STORAGE_REDIRECT_ALLOWLIST || '')
+        .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
+    ];
+    const ok = host && allowed.some((h) => host === h || host.endsWith(`.${h}`));
+    if (!ok) {
+      return res.status(400).json({ error: 'Deliverable host is not allowed' });
+    }
+    return res.redirect(storageKey);
+  }
+
+  let filePath;
+  try {
+    filePath = getLocalFilePath(storageKey);
+  } catch {
+    return res.status(400).json({ error: 'Invalid storage key' });
+  }
 
   if (!fs.existsSync(filePath)) {
-    // No local blob: the deliverable is an external hosted URL that an admin or
-    // editor recorded against the order. Only follow https targets, and only
-    // because the signing step already verified this key belongs to an order
-    // the requester is authorized for.
-    if (storageKey.startsWith('https://')) {
-      return res.redirect(storageKey);
-    }
     return res.status(404).json({ error: 'Requested file asset not found in storage vault' });
   }
 

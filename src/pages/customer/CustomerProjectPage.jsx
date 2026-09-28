@@ -9,6 +9,7 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { Field } from '../../components/ui/Field';
+import { DriveLink } from '../../lib/links.jsx';
 
 /** Parse the `[REVISION DIRECTIVE - 2026-09-11 by Name]: notes` markers the
  * server appends to `instructions` on /revision into discrete timeline rows. */
@@ -199,9 +200,12 @@ export function CustomerProjectPage({ orderId, onNavigate }) {
 
             {canReview && activeVersion && (
               <Reveal className="u-frame flex flex-wrap items-center justify-between gap-3 p-4">
-                <p className="text-[13px] text-[var(--foreground-muted)]">
-                  Watched {activeVersion.version}? Approve it as final, or send it back with notes.
-                </p>
+                <div className="space-y-1.5">
+                  <p className="text-[13px] text-[var(--foreground-muted)]">
+                    Watched {activeVersion.version}? Approve it as final, or send it back with notes.
+                  </p>
+                  {activeVersion.url && <DriveLink url={activeVersion.url} label="Watch this cut in Google Drive" />}
+                </div>
                 <div className="flex gap-2">
                   <button onClick={() => setRevisionOpen(true)} className="btn-ghost">
                     <AlertCircle size={13} /> Request Revision
@@ -216,14 +220,20 @@ export function CustomerProjectPage({ orderId, onNavigate }) {
             {canDownload && activeVersion && (
               <Reveal className="u-frame flex flex-wrap items-center justify-between gap-3 p-4">
                 <p className="text-[13px] text-[var(--foreground-muted)]">
-                  Final delivery approved. Available for a 14-day review buffer.
+                  Final delivery approved. Watch or download your master directly from Google Drive.
                 </p>
-                <button
-                  onClick={() => trackDownload(order.id, activeVersion.id, activeVersion.version, activeVersion.url)}
-                  className="btn-primary"
-                >
-                  <Download size={14} /> Download Master
-                </button>
+                {activeVersion.url ? (
+                  <a href={activeVersion.url} target="_blank" rel="noopener noreferrer" className="btn-primary">
+                    <ExternalLink size={14} /> Open in Google Drive
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => trackDownload(order.id, activeVersion.id, activeVersion.version, activeVersion.url)}
+                    className="btn-primary"
+                  >
+                    <Download size={14} /> Download Master
+                  </button>
+                )}
               </Reveal>
             )}
 

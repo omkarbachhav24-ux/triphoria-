@@ -47,14 +47,18 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
     [normalizedEmail]
   );
 
-  if (!user || !verifyPassword(password, user.password_hash)) {
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
+    // L6: the email is attacker-controlled on a failed login. Cap its length
+    // before it becomes actor_id/entity_id/details so the audit table can't be
+    // inflated or log-forged with megabyte strings.
+    const safeEmail = String(normalizedEmail).slice(0, 254);
     await logAuditEvent({
-      actorId: normalizedEmail,
+      actorId: safeEmail,
       actorRole: 'guest',
       action: 'LOGIN_FAILED',
       entityType: 'Authentication',
-      entityId: normalizedEmail,
-      details: `Failed authentication attempt for ${normalizedEmail}.`
+      entityId: safeEmail,
+      details: `Failed authentication attempt for ${safeEmail}.`
     });
     return res.status(401).json({ error: 'Invalid credentials. Please verify email and password.' });
   }
@@ -116,6 +120,11 @@ authRouter.post('/register', registerLimiter, async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
+  // M2: enforce a minimum password strength on customer registration, matching
+  // the editor-onboarding rule (≥10 chars). Previously any password was accepted.
+  if (String(password).length < 10) {
+    return res.status(400).json({ error: 'Password must be at least 10 characters.' });
+  }
 
   const normalizedEmail = email.trim().toLowerCase();
   const existing = await queryOne('SELECT id FROM users WHERE lower(email) = $1', [normalizedEmail]);
@@ -125,7 +134,7 @@ authRouter.post('/register', registerLimiter, async (req, res) => {
 
   const userId = `user-${Date.now()}`;
   const now = new Date().toISOString();
-  const passHash = hashPassword(password);
+  const passHash = await hashPassword(password);
   const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(normalizedEmail)}`;
 
   await query(
@@ -194,7 +203,7 @@ authRouter.post('/editors', requireRole('admin'), onboardingLimiter, async (req,
   const now = new Date().toISOString();
   // Auto-generated key when the admin doesn't supply one: ~72 bits of entropy.
   const defaultPassword = password || `TP-${crypto.randomBytes(9).toString('base64url')}`;
-  const passHash = hashPassword(defaultPassword);
+  const passHash = await hashPassword(defaultPassword);
   const avatarUrl = avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200`;
 
   await query(

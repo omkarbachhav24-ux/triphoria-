@@ -11,18 +11,12 @@ import { VideoModal } from '../../components/video/VideoModal';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Field } from '../../components/ui/Field';
+import { isGoogleDriveUrl, DriveLink } from '../../lib/links.jsx';
 
-// Reject empty links and known throwaway/sample hosts so a real hosted
-// deliverable URL is always what gets recorded against the order.
-const SAMPLE_HOSTS = ['commondatastorage.googleapis.com', 'sample-videos.com', 'test-videos.co.uk'];
+// Deliverables are handed off as Google Drive links: the editor pastes a Drive
+// share link and the client watches it in Drive. Only Drive links are accepted.
 function isRealDeliverableUrl(url) {
-  try {
-    const u = new URL(url.trim());
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    return !SAMPLE_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
-  } catch {
-    return false;
-  }
+  return isGoogleDriveUrl(url);
 }
 
 const isOverdueOrToday = (deadline) => {
@@ -100,7 +94,7 @@ export function EditorDashboard() {
     e.preventDefault();
     if (!showUploadModal) return;
     if (!isRealDeliverableUrl(outputForm.downloadUrl)) {
-      setUploadError('Enter the real hosted URL of the finished cut (e.g. a client Drive / Frame.io / CDN link). Sample or placeholder links are not accepted.');
+      setUploadError('Paste the Google Drive share link to the finished cut (drive.google.com). Make sure sharing is set so the client can view it.');
       return;
     }
     setUploadError('');
@@ -261,9 +255,12 @@ export function EditorDashboard() {
                                 </div>
                                 {ver.notes && <p className="text-[12px] italic text-[var(--foreground-muted)]">&ldquo;{ver.notes}&rdquo;</p>}
                                 {ver.url && (
-                                  <button onClick={() => setPreviewVersion(ver)} className="btn-ghost !py-1 !px-2.5 !text-[11px]">
-                                    <Play size={10} /> Preview cut
-                                  </button>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <button onClick={() => setPreviewVersion(ver)} className="btn-ghost !py-1 !px-2.5 !text-[11px]">
+                                      <Play size={10} /> Preview cut
+                                    </button>
+                                    <DriveLink url={ver.url} label="Open in Drive" />
+                                  </div>
                                 )}
                               </div>
                             ))}
@@ -319,13 +316,13 @@ export function EditorDashboard() {
                 <Field label="Cut Runtime" value={outputForm.runtime} onChange={(e) => setOutputForm({ ...outputForm, runtime: e.target.value })} placeholder="00:12:30" required />
               </div>
               <Field
-                label="Hosted Deliverable URL"
+                label="Google Drive share link"
                 type="url"
                 required
                 value={outputForm.downloadUrl}
                 onChange={(e) => { setOutputForm({ ...outputForm, downloadUrl: e.target.value }); setUploadError(''); }}
-                placeholder="https://drive.google.com/... or Frame.io / CDN link to the finished cut"
-                hint="TRIPHORIA stores this reference, not the video file, until durable storage is configured."
+                placeholder="https://drive.google.com/file/d/.../view"
+                hint="Paste the Drive link to the finished cut. Set sharing so the client can view it — they watch it directly in Google Drive."
               />
               <Field
                 as="textarea"

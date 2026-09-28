@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, LogOut, ChevronDown, Check, Shield, Scissors, User } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,13 +22,11 @@ const ADMIN_LINKS = [
 /**
  * Navbar — lightweight, editorial, scene-aware. Transparent at the top of a
  * page, a hairline-bordered blurred bar once scrolled. Role-aware link sets.
- * DEV-only workspace switch ribbon stays behind import.meta.env.DEV.
  */
 export function Navbar({ currentPath, onNavigate }) {
-  const { user, switchRole, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [roleMenu, setRoleMenu] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -58,12 +56,6 @@ export function Navbar({ currentPath, onNavigate }) {
         ]
       : PUBLIC_LINKS;
 
-  const handleRoleSwitch = (r, id) => {
-    switchRole(r, id);
-    setRoleMenu(false);
-    onNavigate(r === 'admin' ? '/admin/dashboard' : r === 'editor' ? '/editor/dashboard' : '/dashboard');
-  };
-
   return (
     <header
       style={{
@@ -75,47 +67,6 @@ export function Navbar({ currentPath, onNavigate }) {
         scrolled ? 'border-b border-[var(--border)] backdrop-blur-md' : 'border-b border-transparent'
       }`}
     >
-      {import.meta.env.DEV && (
-        <div className="border-b border-[var(--border-subtle)] bg-[var(--background-dark)] px-4 py-1 md:px-8">
-          <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 font-mono text-[10px] text-[var(--foreground-subtle)]">
-            <span className="truncate">
-              <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-              {user ? `${user.role.toUpperCase()} · ${user.name}` : 'STUDIO PORTAL'}
-            </span>
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setRoleMenu((v) => !v)}
-                className="u-focus inline-flex items-center gap-1 rounded-[var(--radius-editorial)] border border-[var(--border)] px-2 py-0.5 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-              >
-                Switch workspace <ChevronDown size={10} />
-              </button>
-              {roleMenu && (
-                <div className="absolute right-0 mt-1.5 w-60 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--background-elevated)] p-1.5 text-[12px] shadow-xl">
-                  {[
-                    { r: 'admin', id: null, Icon: Shield, label: 'Super Admin' },
-                    { r: 'editor', id: 'editor-01', Icon: Scissors, label: 'Lead Editor' },
-                    { r: 'client', id: 'user-101', Icon: User, label: 'Client' },
-                  ].map(({ r, id, Icon, label }) => (
-                    <button
-                      key={r}
-                      onClick={() => handleRoleSwitch(r, id)}
-                      className="u-focus flex w-full items-center justify-between rounded-[var(--radius-editorial)] px-2.5 py-2 text-left font-sans hover:bg-[var(--surface-hover)]"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon size={13} className="text-[var(--primary)]" /> {label}
-                      </span>
-                      {((r === 'client' && user?.role === 'customer') || user?.role === r) && (
-                        <Check size={13} className="text-[var(--success)]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-4 md:px-8">
         <button onClick={() => go('/')} className="u-focus flex items-center gap-2.5" aria-label="TRIPHORIA home">
           <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-editorial)] bg-[var(--foreground-strong)] font-mono text-[11px] font-bold tracking-tighter text-[var(--background)]">

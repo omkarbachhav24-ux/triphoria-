@@ -81,18 +81,25 @@ export async function withTransaction(fn) {
 }
 
 // ---------------------------------------------------------------------------
-// Password hashing (unchanged — native scrypt, `salt:derivedKeyHex`)
+// Password hashing (async scrypt to avoid blocking the event loop — L2).
+// Stored form is unchanged: `salt:derivedKeyHex`.
 // ---------------------------------------------------------------------------
-export function hashPassword(password) {
+const scryptAsync = (password, salt, keylen) =>
+  new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, keylen, (err, derivedKey) =>
+      err ? reject(err) : resolve(derivedKey));
+  });
+
+export async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
-  const derivedKey = crypto.scryptSync(password, salt, 64);
+  const derivedKey = await scryptAsync(password, salt, 64);
   return `${salt}:${derivedKey.toString('hex')}`;
 }
 
-export function verifyPassword(password, storedHash) {
+export async function verifyPassword(password, storedHash) {
   if (!storedHash || !storedHash.includes(':')) return false;
   const [salt, key] = storedHash.split(':');
-  const derivedKey = crypto.scryptSync(password, salt, 64);
+  const derivedKey = await scryptAsync(password, salt, 64);
   const keyBuffer = Buffer.from(key, 'hex');
   if (keyBuffer.length !== derivedKey.length) return false;
   return crypto.timingSafeEqual(derivedKey, keyBuffer);
@@ -152,7 +159,7 @@ async function seedInitialData() {
         DEFAULT_ADMIN.id,
         DEFAULT_ADMIN.name,
         adminEmail.toLowerCase(),
-        hashPassword(adminPassword),
+        await hashPassword(adminPassword),
         DEFAULT_ADMIN.role,
         DEFAULT_ADMIN.avatar,
         now
@@ -195,7 +202,7 @@ async function seedInitialData() {
         ed.id,
         ed.name,
         ed.email.toLowerCase(),
-        hashPassword(editorPass),
+        await hashPassword(editorPass),
         'editor',
         ed.specialty,
         ed.maxCapacity || 3,
@@ -217,7 +224,7 @@ async function seedInitialData() {
         cust.id,
         cust.name,
         cust.email.toLowerCase(),
-        hashPassword(clientPass),
+        await hashPassword(clientPass),
         'customer',
         cust.organization || 'Independent Creator',
         cust.avatar,

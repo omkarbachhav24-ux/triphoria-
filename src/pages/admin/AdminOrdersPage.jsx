@@ -10,6 +10,7 @@ import { VideoModal } from '../../components/video/VideoModal';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Field } from '../../components/ui/Field';
+import { DriveLink } from '../../lib/links.jsx';
 
 const STATUS_FILTERS = ['ALL', 'Pending Approval', 'In Progress', 'Review', 'Completed', 'Rejected'];
 
@@ -274,9 +275,12 @@ export function AdminOrdersPage({ onNavigate }) {
                           </div>
                           {ver.notes && <p className="text-[12px] italic text-[var(--foreground-muted)]">&ldquo;{ver.notes}&rdquo;</p>}
                           {ver.url && (
-                            <button onClick={() => setPreviewVersion(ver)} className="btn-ghost !py-1 !px-2.5 !text-[11px]">
-                              <Play size={10} /> Preview cut
-                            </button>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <button onClick={() => setPreviewVersion(ver)} className="btn-ghost !py-1 !px-2.5 !text-[11px]">
+                                <Play size={10} /> Preview cut
+                              </button>
+                              <DriveLink url={ver.url} label="Open in Drive" />
+                            </div>
                           )}
                         </div>
                       ))}

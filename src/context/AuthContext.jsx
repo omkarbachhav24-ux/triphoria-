@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: data.error || 'Authentication failed' };
       }
     } catch (err) {
-      return { success: false, message: 'Server communication failure. Please check server.' };
+      return { success: false, message: "Couldn't reach the server. Make sure the API is running, then try again." };
     }
   };
 
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: data.error || 'Registration failed' };
       }
     } catch (err) {
-      return { success: false, message: 'Server communication failure. Please check server.' };
+      return { success: false, message: "Couldn't reach the server. Make sure the API is running, then try again." };
     }
   };
 

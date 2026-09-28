@@ -114,7 +114,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
 
   test('Session persistence - refresh keeps session', async ({ page, context }) => {
     // Login first
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.fill('input[type="email"], input[name="email"]', 'admin@triphoria.io');
     await page.fill('input[type="password"], input[name="password"]', 'adminpgt');
     await Promise.all([
@@ -127,7 +127,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
     console.log('URL AFTER LOGIN:', urlAfterLogin);
 
     // Reload
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1500);
     const urlAfterReload = page.url();
     console.log('URL AFTER RELOAD:', urlAfterReload);
@@ -139,7 +139,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
 
   test('Logout clears session', async ({ page, context }) => {
     // Login
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.fill('input[type="email"], input[name="email"]', 'admin@triphoria.io');
     await page.fill('input[type="password"], input[name="password"]', 'adminpgt');
     await Promise.all([
@@ -149,7 +149,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
     await page.waitForTimeout(2000);
 
     // Find and click logout
-    const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out"), a:has-text("Logout"), a:has-text("Sign Out")').first();
+    const logoutBtn = page.locator('button[aria-label="Sign out"]').first();
     if (await logoutBtn.count() > 0) {
       await logoutBtn.click();
       await page.waitForTimeout(1500);
@@ -165,7 +165,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
 
   test('RBAC - customer cannot access admin', async ({ page }) => {
     // Login as customer
-    await page.goto('/login', { waitUntil: 'networkidle' });
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
     await page.fill('input[type="email"], input[name="email"]', 'alex@creator.com');
     await page.fill('input[type="password"], input[name="password"]', 'clientpgt');
     await Promise.all([
@@ -178,7 +178,7 @@ test.describe('TRIPHORIA Login Debug Suite', () => {
     console.log('CUSTOMER LOGIN URL:', urlAfterLogin);
 
     // Try to access admin
-    await page.goto('/admin', { waitUntil: 'networkidle' });
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
     const adminUrl = page.url();
     console.log('CUSTOMER ACCESSING /admin REDIRECTED TO:', adminUrl);

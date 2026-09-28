@@ -114,16 +114,16 @@ export function HomePage({ onNavigate }) {
             <Reveal>
               <p className="type-eyebrow mb-5">Post-production workflow</p>
             </Reveal>
-            <h1 className="type-display">
-              <TextReveal text="Video production," as="span" />
+            <h1 className="type-display text-[#00CDB8]">
+              <TextReveal text="Video production," as="span" className="text-[#00CDB8]" />
               <br />
-              <TextReveal text="without the" as="span" delay={0.05} />{' '}
-              <span className="text-[var(--primary)]">
-                <TextReveal text="chaos." as="span" delay={0.1} />
+              <TextReveal text="without the" as="span" delay={0.05} className="text-[#00CDB8]" />{' '}
+              <span className="text-[#00CDB8]">
+                <TextReveal text="chaos." as="span" delay={0.1} className="text-[#00CDB8]" />
               </span>
             </h1>
             <Reveal delay={0.15}>
-              <p className="type-body-lg mt-6 max-w-xl">
+              <p className="type-body-lg mt-6 max-w-xl text-[#00CDB8]">
                 You record. TRIPHORIA runs the workflow — a named editor, tracked
                 versions, structured review, and a clear delivery state. You always
                 know exactly where your video is.
@@ -202,12 +202,12 @@ export function HomePage({ onNavigate }) {
           <Reveal>
             <div className="mb-8 flex items-end justify-between gap-4">
               <div>
-                <p className="type-eyebrow mb-2">Recent cuts</p>
-                <h2 className="type-h2">Work in motion</h2>
+                <p className="type-eyebrow mb-2 text-[#00CDB8]">Recent cuts</p>
+                <h2 className="type-h2 text-[#00CDB8]">Work in motion</h2>
               </div>
               <button
                 onClick={() => onNavigate('/work')}
-                className="u-focus inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--foreground-muted)] hover:text-[var(--foreground-strong)]"
+                className="u-focus inline-flex items-center gap-1.5 font-mono text-[12px] text-[#00CDB8] hover:text-[var(--primary-hover)]"
               >
                 All work <ArrowUpRight size={13} />
               </button>
@@ -249,11 +249,11 @@ export function HomePage({ onNavigate }) {
       <Scene variant="paper" id="how-it-works" className="py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Reveal>
-            <p className="type-eyebrow mb-3">How it works</p>
-            <h2 className="type-h1 max-w-2xl">
+            <p className="type-eyebrow mb-3 text-[#00CDB8]">How it works</p>
+            <h2 className="type-h1 max-w-2xl text-[#007E72]">
               One project record, from brief to delivered.
             </h2>
-            <p className="type-body-lg mt-4 max-w-xl">
+            <p className="type-body-lg mt-4 max-w-xl text-[#007E72]/90">
               These aren't marketing steps — they're the states every project moves
               through in the app. The status you see is the status the studio sees.
             </p>
@@ -266,10 +266,10 @@ export function HomePage({ onNavigate }) {
                 className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 py-5 sm:grid-cols-[80px_240px_1fr] sm:py-6"
               >
                 <span className="font-mono text-[13px] text-[var(--primary)]">{s.n}</span>
-                <span className="text-[15px] font-semibold text-[var(--foreground-strong)] sm:text-[16px]">
+                <span className="text-[15px] font-semibold text-[#007E72] sm:text-[16px]">
                   {s.t}
                 </span>
-                <span className="col-span-2 text-[13px] leading-relaxed text-[var(--foreground-muted)] sm:col-span-1 sm:text-[14px]">
+                <span className="col-span-2 text-[13px] leading-relaxed text-[#007E72]/80 sm:col-span-1 sm:text-[14px]">
                   {s.d}
                 </span>
               </StaggerItem>
@@ -284,10 +284,10 @@ export function HomePage({ onNavigate }) {
           <Reveal>
             <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="type-eyebrow mb-2">Selected work</p>
-                <h2 className="type-h1">Three cuts, front and centre.</h2>
+                <p className="type-eyebrow mb-2 text-[#00CDB8]">Selected work</p>
+                <h2 className="type-h1 text-[#00CDB8]">Three cuts, front and centre.</h2>
               </div>
-              <button onClick={() => onNavigate('/work')} className="btn-ghost">
+              <button onClick={() => onNavigate('/work')} className="btn-ghost text-[#00CDB8]">
                 See the full library <ArrowRight size={14} />
               </button>
             </div>
@@ -325,15 +325,15 @@ export function HomePage({ onNavigate }) {
       <Scene variant="dark-editorial" id="about" className="border-y border-[var(--border)] py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Reveal>
-            <p className="type-eyebrow mb-3">Why TRIPHORIA</p>
-            <h2 className="type-h1 max-w-2xl">The chaos is the problem. The record is the fix.</h2>
+            <p className="type-eyebrow mb-3 text-[#00CDB8]">Why TRIPHORIA</p>
+            <h2 className="type-h1 max-w-2xl text-[#00CDB8]">The chaos is the problem. The record is the fix.</h2>
           </Reveal>
           <div className="mt-12 grid gap-px overflow-hidden rounded-[var(--radius-editorial)] border border-[var(--border)] bg-[var(--border)] md:grid-cols-2">
             <div className="space-y-4 bg-[var(--background)] p-6 sm:p-8">
-              <p className="type-label text-[var(--foreground-subtle)]">Without a workflow</p>
+              <p className="type-label text-[#00CDB8]">Without a workflow</p>
               <ul className="space-y-3">
                 {PROBLEMS.map((p) => (
-                  <li key={p} className="flex gap-3 text-[14px] leading-relaxed text-[var(--foreground-muted)]">
+                  <li key={p} className="flex gap-3 text-[14px] leading-relaxed text-[#00CDB8]/80">
                     <Minus size={16} className="mt-0.5 shrink-0 text-[var(--error)]" />
                     {p}
                   </li>
@@ -344,7 +344,7 @@ export function HomePage({ onNavigate }) {
               <p className="type-label text-[var(--primary)]">With TRIPHORIA</p>
               <ul className="space-y-3">
                 {ANSWERS.map((a) => (
-                  <li key={a} className="flex gap-3 text-[14px] leading-relaxed text-[var(--foreground)]">
+                  <li key={a} className="flex gap-3 text-[14px] leading-relaxed text-[#00CDB8]">
                     <Plus size={16} className="mt-0.5 shrink-0 text-[var(--primary)]" />
                     {a}
                   </li>
@@ -359,8 +359,8 @@ export function HomePage({ onNavigate }) {
       <Scene variant="paper" id="services" className="py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-4 md:px-8">
           <Reveal>
-            <p className="type-eyebrow mb-3">Services</p>
-            <h2 className="type-h1 max-w-2xl">What the studio takes on.</h2>
+            <p className="type-eyebrow mb-3 text-[#007E72]">Services</p>
+            <h2 className="type-h1 max-w-2xl text-[#007E72]">What the studio takes on.</h2>
           </Reveal>
           <div className="mt-10 grid gap-8 lg:grid-cols-[320px_1fr]">
             <div className="flex flex-col border-t border-[var(--border)]">
@@ -370,8 +370,8 @@ export function HomePage({ onNavigate }) {
                   onClick={() => setOpenService(i)}
                   className={`u-focus flex items-center justify-between border-b border-[var(--border)] py-4 text-left transition-colors ${
                     openService === i
-                      ? 'text-[var(--foreground-strong)]'
-                      : 'text-[var(--foreground-muted)] hover:text-[var(--foreground-strong)]'
+                      ? 'text-[#007E72]'
+                      : 'text-[#007E72]/70 hover:text-[#007E72]'
                   }`}
                 >
                   <span className="text-[15px] font-semibold">{s.name}</span>
@@ -380,11 +380,11 @@ export function HomePage({ onNavigate }) {
               ))}
             </div>
             <Reveal key={openService} className="u-frame p-8 sm:p-10">
-              <p className="type-label mb-3 text-[var(--foreground-subtle)]">
+              <p className="type-label mb-3 text-[#007E72]">
                 {SERVICES[openService].tag}
               </p>
-              <h3 className="type-h2 mb-3">{SERVICES[openService].name}</h3>
-              <p className="type-body max-w-lg">{SERVICES[openService].body}</p>
+              <h3 className="type-h2 mb-3 text-[#007E72]">{SERVICES[openService].name}</h3>
+              <p className="type-body max-w-lg text-[#007E72]/90">{SERVICES[openService].body}</p>
               <button onClick={() => onNavigate('/order')} className="btn-primary mt-8">
                 Brief this project <ArrowRight size={14} />
               </button>
@@ -397,12 +397,12 @@ export function HomePage({ onNavigate }) {
       <Scene variant="teal" id="contact" className="py-24 md:py-32">
         <div className="mx-auto max-w-[900px] px-4 text-center md:px-8">
           <Reveal>
-            <h2 className="type-display">Put a video into the workflow.</h2>
-            <p className="type-body-lg mx-auto mt-5 max-w-lg text-[var(--foreground-muted)]">
+            <h2 className="type-display text-[#0B0C0E]">Put a video into the workflow.</h2>
+            <p className="type-body-lg mx-auto mt-5 max-w-lg text-[#0B0C0E]/80">
               Name the project, drop a footage link, set a deadline. An editor picks
               it up from there.
             </p>
-            <button onClick={() => onNavigate('/order')} className="btn-primary-lg mx-auto mt-9">
+            <button onClick={() => onNavigate('/order')} className="btn-primary-lg mx-auto mt-9 bg-[#0B0C0E] text-[#00CDB8] hover:bg-[#17181B]">
               Start a Project <ArrowRight size={16} />
             </button>
           </Reveal>
@@ -440,12 +440,12 @@ function FeatureTile({ v, onOpen, large = false }) {
           <div className="absolute inset-0 bg-[var(--surface-alt)]" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+        <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-[#00CDB8] opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
           <Play size={15} className="translate-x-[1px] fill-current" />
         </span>
         <div className="absolute inset-x-4 bottom-4">
-          <div className={`font-semibold text-white ${large ? 'text-lg' : 'text-[14px]'}`}>{v.title}</div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[11px] text-white/70">
+          <div className={`font-semibold text-[#00CDB8] ${large ? 'text-lg' : 'text-[14px]'}`}>{v.title}</div>
+          <div className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[11px] text-[#00CDB8]/80">
             {v.client && <span>{v.client}</span>}
             {v.format && <span>{v.format}</span>}
             {v.runtime && <span>{v.runtime}</span>}

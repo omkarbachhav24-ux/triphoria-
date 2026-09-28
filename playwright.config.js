@@ -22,14 +22,14 @@ export default defineConfig({
     {
       command: 'npm run server',
       url: 'http://127.0.0.1:3001/api/auth/me',
-      reuseExistingServer: !process.env.CI,
-      timeout: 10 * 1000,
+      reuseExistingServer: true,
+      timeout: 30 * 1000,
     },
     {
       command: 'npm run dev',
       url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
-      timeout: 10 * 1000,
+      reuseExistingServer: true,
+      timeout: 30 * 1000,
     }
   ],
 });

@@ -4,6 +4,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { CookieBanner } from './components/ui/CookieBanner';
 import { SmoothScroll } from './components/ui/smooth-scroll';
+import { CharacterPreloader } from './components/ui/CharacterPreloader';
 
 // Public & Client Pages — kept in the main bundle: every visitor hits at
 // least one of these, so splitting them would just add a request-waterfall
@@ -255,6 +256,7 @@ export function App() {
 
   return (
     <SmoothScroll>
+      <CharacterPreloader />
       <div className="min-h-screen bg-[#111111] text-[#FAFAF5] flex flex-col justify-between selection:bg-[#00CDB8]/30 selection:text-white">
         <Navbar currentPath={currentPath} onNavigate={navigateTo} />
         <main className="flex-1">

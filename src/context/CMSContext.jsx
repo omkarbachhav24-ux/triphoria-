@@ -167,13 +167,25 @@ export const CMSProvider = ({ children }) => {
     return false;
   };
 
-  // Toggle Social Post Publish State
+  // Toggle Social Post Publish State — non-destructive (preserves id/created_at)
   const toggleSocialPublish = async (id) => {
     const target = social.find(s => s.id === id);
-    if (!target) return;
-    // In database cms_social, we can re-post or update
-    await deleteSocialPost(id);
-    await addSocialPost({ ...target, isPublished: !target.isPublished });
+    if (!target) return false;
+    try {
+      const res = await fetch(`/api/cms/social/${id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isPublished: !target.isPublished })
+      });
+      if (res.ok) {
+        await refreshCMS();
+        return true;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return false;
   };
 
   return (

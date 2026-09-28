@@ -292,7 +292,37 @@ cmsRouter.post('/social', requireRole('admin'), async (req, res) => {
   res.status(201).json({ success: true, id });
 });
 
-// 11. Admin Delete Social Post
+// 11. Admin Toggle Social Post Publish State (non-destructive — preserves id/created_at)
+cmsRouter.patch('/social/:id/publish', requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { isPublished } = req.body;
+  if (typeof isPublished !== 'boolean') {
+    return res.status(400).json({ error: 'isPublished (boolean) is required' });
+  }
+
+  const updated = await queryOne(
+    `UPDATE cms_social SET is_published = $1 WHERE id = $2
+     RETURNING id, platform, url, title, caption, thumbnail_url AS thumbnail, likes,
+       is_published AS "isPublished"`,
+    [isPublished ? 1 : 0, id]
+  );
+  if (!updated) {
+    return res.status(404).json({ error: 'Social post not found' });
+  }
+
+  await logAuditEvent({
+    actorId: req.user.id,
+    actorRole: 'admin',
+    action: 'CMS_SOCIAL_PUBLISH_TOGGLED',
+    entityType: 'CMS',
+    entityId: id,
+    details: `Social post "${updated.title}" ${isPublished ? 'published' : 'unpublished'}.`
+  });
+
+  res.json({ success: true, social: { ...updated, isPublished: Boolean(updated.isPublished) } });
+});
+
+// 12. Admin Delete Social Post
 cmsRouter.delete('/social/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
   await query('DELETE FROM cms_social WHERE id = $1', [id]);

@@ -51,6 +51,11 @@ app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'
 // against login/register as a memory-amplification DoS.
 app.use('/api/storage', express.json({ limit: '50mb' }));
 app.use('/api/storage', express.urlencoded({ extended: true, limit: '50mb' }));
+// CMS video upload also needs a large body limit (raw video bytes)
+app.use('/api/cms/portfolio', (req, res, next) => {
+  if (req.path.endsWith('/upload-video')) return next(); // pass raw stream through
+  next();
+});
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 

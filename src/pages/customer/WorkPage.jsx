@@ -10,7 +10,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 const SAMPLE = /commondatastorage\.googleapis\.com|sample-videos|BigBuckBunny|ElephantsDream|TearsOfSteel|WeAreGoingOnBullrun|ForBiggerBlazes/i;
 const DIRECT_FILE = /\.(mp4|webm|mov|m4v)(\?|$)/i;
 
-const src = (v) => v?.playbackUrl || v?.videoUrl || '';
+const src = (v) => v?.fileUrl || v?.playbackUrl || v?.videoUrl || '';
 const isReal = (v) => {
   const s = src(v);
   return (Boolean(s) || Boolean(v?.socialUrl)) && !SAMPLE.test(s);

@@ -13,7 +13,7 @@ const SAMPLE_HOSTS = /commondatastorage\.googleapis\.com|sample-videos|test-vide
 const SAMPLE_NAMES = /BigBuckBunny|ElephantsDream|TearsOfSteel|WeAreGoingOnBullrun|ForBiggerBlazes/i;
 const DIRECT_FILE = /\.(mp4|webm|mov|m4v)(\?|$)/i;
 
-const mediaSrc = (v) => v?.playbackUrl || v?.videoUrl || '';
+const mediaSrc = (v) => v?.fileUrl || v?.playbackUrl || v?.videoUrl || '';
 const isRealMedia = (v) => {
   const s = mediaSrc(v);
   if (!s && !v?.socialUrl) return false;

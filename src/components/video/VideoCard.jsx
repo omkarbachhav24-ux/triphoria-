@@ -8,16 +8,18 @@ import { motionPresets } from '../../design-system/motionPresets';
  * VideoCard — media-first card used across the public site, the Video Library,
  * customer/editor project views, and output-version galleries.
  *
- * It shows a poster and, on hover, a short muted loop preview ONLY when a
- * directly-playable file URL is supplied (no iframe autoplay in a grid — see
- * brief §44). Clicking calls onOpen() so the caller can mount a <VideoModal>.
- *
- * No metadata is fabricated: a field is rendered only if it is passed in.
+ * Autoplay behaviour:
+ *  - If `previewSrc` is a direct MP4/WebM URL: plays AUTOMATICALLY, muted,
+ *    looped, no click needed. This is the "continuous play" mode for uploaded
+ *    files (Supabase Storage public URLs).
+ *  - Without `previewSrc` (Instagram / YouTube links): shows poster + play
+ *    button; click opens a VideoModal.
  *
  * Props (all optional except title):
  *   title, creator, category, platform
  *   poster        image URL for the still
- *   previewSrc    direct .mp4/.webm URL for the hover loop (skip for YT/Vimeo/IG)
+ *   previewSrc    direct .mp4/.webm URL — enables autoplay in grid
+ *   autoplay      boolean — force autoplay even without hover (default: true when previewSrc set)
  *   ratio         '9:16' | '4:5' | '1:1' | '16:9'  (default '9:16')
  *   duration      e.g. '0:42' — only if real
  *   version       e.g. 'V2'
@@ -45,6 +47,7 @@ export function VideoCard({
   platform,
   poster,
   previewSrc,
+  autoplay = true,
   ratio = '9:16',
   duration,
   version,
@@ -58,11 +61,23 @@ export function VideoCard({
   const reduce = useReducedMotion();
   const videoRef = useRef(null);
   const [hovering, setHovering] = useState(false);
+  // canPreview: direct file available and not reduced motion
   const canPreview = Boolean(previewSrc) && !reduce;
+  // autoplayMode: play immediately on mount, not just on hover
+  const autoplayMode = canPreview && autoplay;
+
+  // Mount effect — start playing immediately for autoplay cards
+  React.useEffect(() => {
+    if (!autoplayMode || !videoRef.current) return;
+    const v = videoRef.current;
+    v.currentTime = 0;
+    const p = v.play();
+    if (p && p.catch) p.catch(() => {});
+  }, [autoplayMode]);
 
   const enter = () => {
     setHovering(true);
-    if (canPreview && videoRef.current) {
+    if (canPreview && !autoplayMode && videoRef.current) {
       videoRef.current.currentTime = 0;
       const p = videoRef.current.play();
       if (p && p.catch) p.catch(() => {});
@@ -70,7 +85,8 @@ export function VideoCard({
   };
   const leave = () => {
     setHovering(false);
-    if (videoRef.current) videoRef.current.pause();
+    // Don't pause in autoplay mode — keep it rolling
+    if (!autoplayMode && videoRef.current) videoRef.current.pause();
   };
 
   const Wrapper = href ? 'a' : 'button';
@@ -112,7 +128,7 @@ export function VideoCard({
             </div>
           )}
 
-          {/* hover loop */}
+          {/* hover loop / autoplay loop */}
           {canPreview && (
             <video
               ref={videoRef}
@@ -121,9 +137,10 @@ export function VideoCard({
               muted
               loop
               playsInline
-              preload="none"
+              autoPlay={autoplayMode}
+              preload={autoplayMode ? 'auto' : 'none'}
               className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-                hovering ? 'opacity-100' : 'opacity-0'
+                autoplayMode || hovering ? 'opacity-100' : 'opacity-0'
               }`}
             />
           )}

@@ -1,67 +1,101 @@
+import { createClient } from '@supabase/supabase-js';
 import { StorageProvider } from './StorageProvider.js';
+import { createHash } from 'node:crypto';
 
 /**
- * SupabaseStorageProvider — the intended durable production storage backend.
+ * SupabaseStorageProvider — durable production storage via Supabase Storage.
  *
- * STATUS: BLOCKED — not usable yet. This class documents exactly what is
- * missing rather than pretending to work. Every method throws a clear,
- * typed error identifying the missing configuration; nothing here ever
- * fabricates a successful upload or a fake signed URL.
+ * Required env vars (add to .env and Vercel):
+ *   SUPABASE_URL              = https://atzbpherzmcojennenng.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY = <service role key from Supabase → Settings → API>
+ *   SUPABASE_STORAGE_BUCKET   = triphoria-media
  *
- * What is missing:
- *   1. SUPABASE_SERVICE_ROLE_KEY (or an equivalent server-side key with
- *      Storage write access) — NOT currently present in this environment.
- *      Only VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY exist,
- *      which are the client-side/publishable credentials used for nothing
- *      storage-related today; they cannot authorize server-side uploads.
- *   2. SUPABASE_STORAGE_BUCKET — the bucket name to write deliverables
- *      into (e.g. "triphoria-deliverables"). Not yet created/decided.
- *   3. The @supabase/supabase-js (or @supabase/storage-js) package —
- *      not yet added as a dependency, deliberately, until the above
- *      credentials exist (no point importing an SDK that can't do
- *      anything with a build that runs everywhere including places
- *      without those env vars set).
- *
- * How to unblock (once credentials exist):
- *   - Set SUPABASE_SERVICE_ROLE_KEY and SUPABASE_STORAGE_BUCKET as server
- *     (never VITE_-prefixed / never client-exposed) environment variables.
- *   - `npm install @supabase/supabase-js`
- *   - Implement each method below using
- *     `supabase.storage.from(bucket).upload/remove/createSignedUrl/list`.
- *   - Update server/providers/index.js's selectStorageProvider() to return
- *     this provider once isConfigured is true — no other call site needs
- *     to change, because everything upstream (upload.routes.js,
- *     orders.routes.js) is already written against the StorageProvider
- *     interface, not against a concrete provider.
- *   - The canonical DB reference stays { storageKey (bucket-relative path),
- *     sizeBytes, mimeType, checksum } in order_files / output_versions —
- *     never store a signed URL as the persisted value, only the key.
+ * Create bucket first: Supabase dashboard → Storage → New bucket
+ *   Name: triphoria-media   Public: ON   File size limit: 500 MB
  */
 export class SupabaseStorageProvider extends StorageProvider {
-  get name() {
-    return 'supabase-storage (BLOCKED — missing credentials)';
-  }
+  #client = null;
+  #bucket = null;
+
+  get name() { return 'supabase-storage'; }
 
   get isConfigured() {
-    return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_STORAGE_BUCKET);
-  }
-
-  #unavailable(method) {
-    const err = new Error(
-      `SupabaseStorageProvider.${method}() is not usable: missing SUPABASE_SERVICE_ROLE_KEY and/or ` +
-      'SUPABASE_STORAGE_BUCKET. See server/providers/SupabaseStorageProvider.js for what is required. ' +
-      'This is a genuine infrastructure gap, not a bug — do not work around it by faking a result.'
+    return Boolean(
+      process.env.SUPABASE_SERVICE_ROLE_KEY &&
+      process.env.SUPABASE_STORAGE_BUCKET &&
+      (process.env.SUPABASE_URL ||
+       process.env.NEXT_PUBLIC_SUPABASE_URL ||
+       process.env.VITE_SUPABASE_URL)
     );
-    err.status = 503;
-    err.code = 'STORAGE_NOT_CONFIGURED';
-    return err;
   }
 
-  async upload() { throw this.#unavailable('upload'); }
-  async delete() { throw this.#unavailable('delete'); }
-  async getSignedUrl() { throw this.#unavailable('getSignedUrl'); }
-  async exists() { throw this.#unavailable('exists'); }
-  async metadata() { throw this.#unavailable('metadata'); }
+  #init() {
+    if (this.#client) return;
+    const url =
+      process.env.SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      `https://atzbpherzmcojennenng.supabase.co`;
+    this.#client = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false }
+    });
+    this.#bucket = process.env.SUPABASE_STORAGE_BUCKET;
+  }
+
+  /** Upload a Node readable stream or Buffer. Returns { storageKey, sizeBytes, checksum, publicUrl }. */
+  async upload(stream, storageKey) {
+    this.#init();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    const buffer = Buffer.concat(chunks);
+    const checksum = createHash('sha256').update(buffer).digest('hex');
+    const contentType = stream.headers?.['content-type'] || 'video/mp4';
+
+    const { error } = await this.#client.storage
+      .from(this.#bucket)
+      .upload(storageKey, buffer, { contentType, upsert: true, cacheControl: '3600' });
+
+    if (error) {
+      const err = new Error(`Supabase storage upload failed: ${error.message}`);
+      err.status = 500; err.code = 'STORAGE_UPLOAD_FAILED';
+      throw err;
+    }
+
+    const { data: urlData } = this.#client.storage
+      .from(this.#bucket)
+      .getPublicUrl(storageKey);
+
+    return { storageKey, sizeBytes: buffer.length, checksum, publicUrl: urlData?.publicUrl || null };
+  }
+
+  async delete(storageKey) {
+    this.#init();
+    const { error } = await this.#client.storage.from(this.#bucket).remove([storageKey]);
+    if (error) throw new Error(`Supabase delete failed: ${error.message}`);
+  }
+
+  async getSignedUrl(storageKey, expiresInSeconds = 900) {
+    this.#init();
+    const { data, error } = await this.#client.storage
+      .from(this.#bucket)
+      .createSignedUrl(storageKey, expiresInSeconds);
+    if (error) throw new Error(`Supabase signed URL failed: ${error.message}`);
+    return data.signedUrl;
+  }
+
+  async exists(storageKey) {
+    this.#init();
+    const folder = storageKey.split('/').slice(0, -1).join('/');
+    const file = storageKey.split('/').pop();
+    const { data } = await this.#client.storage.from(this.#bucket).list(folder, { search: file });
+    return Boolean(data?.length);
+  }
+
+  async metadata(storageKey) {
+    this.#init();
+    const { data } = this.#client.storage.from(this.#bucket).getPublicUrl(storageKey);
+    return { publicUrl: data?.publicUrl };
+  }
 }
 
 export default SupabaseStorageProvider;

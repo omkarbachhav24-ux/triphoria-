@@ -2,6 +2,7 @@ import express from 'express';
 import { query, queryOne, withTransaction } from '../db.js';
 import { requireRole } from '../auth.js';
 import { logAuditEvent } from './auth.routes.js';
+import { selectStorageProvider } from '../providers/index.js';
 
 export const cmsRouter = express.Router();
 
@@ -11,7 +12,8 @@ const VALID_CMS_MEDIA_TYPES = new Set(['Reel', 'Short', 'LongForm', 'Commercial'
 
 function formatProject(row) {
   if (!row) return null;
-  const playback = row.playback_url || row.video_url;
+  // fileUrl (direct upload) takes priority over video_url (pasted link)
+  const playback = row.file_url || row.playback_url || row.video_url;
   return {
     id: row.id,
     title: row.title,
@@ -22,6 +24,8 @@ function formatProject(row) {
     description: row.description,
     thumbnail: row.thumbnail_url,
     videoUrl: playback,
+    fileUrl: row.file_url || null,
+    storageKey: row.storage_key || null,
     socialProvider: row.social_provider || 'none',
     socialUrl: row.social_url || '',
     playbackUrl: playback,
@@ -337,4 +341,62 @@ cmsRouter.delete('/social/:id', requireRole('admin'), async (req, res) => {
   });
 
   res.json({ success: true, message: 'Social post removed' });
+});
+
+// 13. Admin Direct Video Upload for CMS Portfolio
+// Accepts raw video bytes (PUT-style) OR a base64 data URL body.
+// Stores in Supabase Storage and saves the public URL back to the project row.
+// Usage: POST /api/cms/portfolio/:id/upload-video  (multipart/octet-stream body)
+cmsRouter.post('/portfolio/:id/upload-video', requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+
+  const project = await queryOne('SELECT id FROM cms_projects WHERE id = $1', [id]);
+  if (!project) return res.status(404).json({ error: 'Portfolio project not found' });
+
+  const provider = selectStorageProvider();
+  if (!provider) {
+    return res.status(503).json({
+      error: 'Direct video upload requires Supabase Storage. Add SUPABASE_SERVICE_ROLE_KEY and SUPABASE_STORAGE_BUCKET to .env, then create a public bucket named "triphoria-media" in your Supabase dashboard.',
+      code: 'STORAGE_NOT_CONFIGURED',
+      setup: {
+        step1: 'Supabase dashboard → Storage → New bucket → Name: triphoria-media → Public: ON',
+        step2: 'Supabase dashboard → Settings → API → copy "service_role" key',
+        step3: 'Add to .env: SUPABASE_SERVICE_ROLE_KEY=... and SUPABASE_STORAGE_BUCKET=triphoria-media',
+        step4: 'Also add SUPABASE_URL=https://atzbpherzmcojennenng.supabase.co',
+      }
+    });
+  }
+
+  const contentType = req.headers['content-type'] || 'video/mp4';
+  const ext = contentType.includes('webm') ? 'webm' : contentType.includes('mov') ? 'mov' : 'mp4';
+  const storageKey = `cms/${id}/video.${ext}`;
+
+  try {
+    const result = await provider.upload(req, storageKey);
+
+    await query(
+      'UPDATE cms_projects SET storage_key = $1, file_url = $2 WHERE id = $3',
+      [storageKey, result.publicUrl, id]
+    );
+
+    await logAuditEvent({
+      actorId: req.user.id,
+      actorRole: 'admin',
+      action: 'CMS_VIDEO_UPLOADED',
+      entityType: 'CMS',
+      entityId: id,
+      details: `Admin uploaded video directly for portfolio item "${id}" (${(result.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
+    });
+
+    res.json({
+      success: true,
+      storageKey,
+      fileUrl: result.publicUrl,
+      sizeBytes: result.sizeBytes,
+      message: 'Video uploaded and linked to portfolio item'
+    });
+  } catch (err) {
+    console.error('[CMS VIDEO UPLOAD]', err);
+    res.status(err.status || 500).json({ error: err.message, code: err.code });
+  }
 });

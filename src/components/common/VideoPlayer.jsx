@@ -64,13 +64,15 @@ export const extractVideoEmbed = (url = '') => {
     };
   }
 
-  // 4. Google Drive Matchers
-  const driveFileRegex = /drive\.google\.com\/file\/d\/([^/?#&]+)/i;
+  // 4. Google Drive Matchers — file/d/, open?id=, and uc?id= patterns
+  const driveFileRegex = /drive\.google\.com\/(?:file\/d\/([^/?#&]+)|open\?id=([^&]+)|uc\?id=([^&]+))/i;
   const driveMatch = url.match(driveFileRegex);
-  if (driveMatch && driveMatch[1]) {
+  const driveFileId = driveMatch && (driveMatch[1] || driveMatch[2] || driveMatch[3]);
+  if (driveMatch && driveFileId && driveFileId.length >= 10) {
     return {
       type: 'google_drive',
-      embedUrl: `https://drive.google.com/file/d/${driveMatch[1]}/preview`,
+      fileId: driveFileId,
+      embedUrl: `https://drive.google.com/file/d/${driveFileId}/preview`,
       url: url
     };
   }
@@ -82,9 +84,20 @@ export const extractVideoEmbed = (url = '') => {
   };
 };
 
+/** Returns true when `extractVideoEmbed(url)` yields a recognisable playable type.
+ *  Used to avoid rendering a dead `<video>` element for garbage URLs (e.g. a
+ *  truncated Drive link like `drive.google.com/v`). */
+export const isPlayableMediaUrl = (url = '') => {
+  const parsed = extractVideoEmbed(url);
+  return parsed.type === 'youtube' || parsed.type === 'vimeo' ||
+    parsed.type === 'google_drive' || parsed.type === 'direct' ||
+    parsed.type === 'instagram';
+};
+
 export const VideoPlayer = ({ 
   src = '', 
   playbackUrl = '',
+  fileUrl = '',
   socialUrl = '',
   socialProvider = 'none',
   poster = '', 
@@ -97,8 +110,8 @@ export const VideoPlayer = ({
 }) => {
   const [hasError, setHasError] = useState(false);
 
-  // Active Playback Source (TRIPHORIA native video playback asset)
-  const activePlaybackSrc = playbackUrl || src;
+  // fileUrl (direct upload) takes priority — it's a raw CDN URL that plays natively
+  const activePlaybackSrc = fileUrl || playbackUrl || src;
 
   // Derive Aspect Ratio Class & Frame Sizing
   const getAspectRatioClasses = (ratio) => {
@@ -117,8 +130,12 @@ export const VideoPlayer = ({
 
   const frameClass = getAspectRatioClasses(aspectRatio);
 
+  // Recognise whether this URL can actually play in an iframe or <video>.
+  const playable = isPlayableMediaUrl(activePlaybackSrc);
+  const showsUnavailable = !playable || hasError;
+
   // 1. If direct playback URL or HTML5 video asset exists (and hasn't errored), render native TRIPHORIA player
-  if (activePlaybackSrc && !hasError && !activePlaybackSrc.includes('instagram.com')) {
+  if (activePlaybackSrc && !showsUnavailable && !activePlaybackSrc.includes('instagram.com')) {
     const parsedPlayback = extractVideoEmbed(activePlaybackSrc);
 
     // If active playback source is an embeddable iframe provider (YouTube / Vimeo / Drive)

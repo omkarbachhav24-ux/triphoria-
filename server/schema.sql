@@ -156,6 +156,11 @@ ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT DEFAULT
 -- continue to work unchanged; no data is migrated or destroyed.
 ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS media_type       TEXT;
 ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS tags             TEXT[] DEFAULT '{}';
+-- Direct-upload support: admins can upload a video file instead of pasting a URL.
+-- storage_key = bucket-relative path (e.g. 'cms/WORK-xxxx/video.mp4')
+-- file_url    = public/signed CDN URL generated after upload (served directly)
+ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS storage_key      TEXT;
+ALTER TABLE cms_projects  ADD COLUMN IF NOT EXISTS file_url         TEXT;
 ALTER TABLE orders        ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT;
 ALTER TABLE orders        ADD COLUMN IF NOT EXISTS media_type       TEXT;
 

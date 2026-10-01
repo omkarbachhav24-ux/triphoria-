@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   Plus, Edit3, Trash2, Eye, Check, Film,
-  Layers, ExternalLink, Save, Search, Grid3x3, List, X,
+  Layers, ExternalLink, Save, Search, Grid3x3, List, X, Upload, Link,
 } from 'lucide-react';
 import { useCMS } from '../../context/CMSContext';
 import { getAutoThumbnail } from '../../components/common/VideoPlayer';
@@ -85,6 +85,12 @@ export function CMSManagerPage({ onNavigate }) {
   });
 
   const [previewProject, setPreviewProject] = useState(null);
+  // Video upload state for the project form
+  const [videoMode, setVideoMode] = useState('url'); // 'url' | 'upload'
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const fileInputRef = useRef(null);
 
   const handleSaveFeatured = async (e) => {
     e.preventDefault();
@@ -141,11 +147,53 @@ export function CMSManagerPage({ onNavigate }) {
       },
     };
 
+    let savedId = null;
     if (editingProject === 'NEW') {
-      await addPortfolioProject(payload);
+      const ok = await addPortfolioProject(payload);
+      // Get the new project's id from the refreshed portfolio
+      if (ok) {
+        const r = await fetch('/api/cms/admin/portfolio', { credentials: 'include' });
+        const d = await r.json();
+        savedId = d.portfolio?.[0]?.id;
+      }
     } else {
       await updatePortfolioProject(editingProject.id, payload);
+      savedId = editingProject.id;
     }
+
+    // If a file was picked, upload it now
+    if (uploadFile && savedId) {
+      setUploading(true);
+      setUploadProgress('Uploading video to storage…');
+      try {
+        const res = await fetch(`/api/cms/portfolio/${savedId}/upload-video`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': uploadFile.type || 'video/mp4' },
+          body: uploadFile,
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setUploadProgress(`✅ Uploaded (${(uploadFile.size / 1024 / 1024).toFixed(1)} MB)`);
+          await new Promise(r => setTimeout(r, 800));
+        } else if (data.code === 'STORAGE_NOT_CONFIGURED') {
+          setUploadProgress('⚠️ Storage not configured yet — video saved as URL. See console for setup steps.');
+          console.warn('[TRIPHORIA] Supabase Storage not configured:', data.setup);
+          await new Promise(r => setTimeout(r, 2000));
+        } else {
+          setUploadProgress(`❌ Upload failed: ${data.error}`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (err) {
+        setUploadProgress(`❌ ${err.message}`);
+        await new Promise(r => setTimeout(r, 2000));
+      } finally {
+        setUploading(false);
+        setUploadFile(null);
+        setUploadProgress('');
+      }
+    }
+
     setEditingProject(null);
   };
 
@@ -525,12 +573,57 @@ export function CMSManagerPage({ onNavigate }) {
                 </Field>
               </div>
 
-              <Field
-                label="Direct Playback Video URL (MP4 / Hosted Asset)" type="url" required
-                placeholder="https://cdn.example.com/video.mp4"
-                value={projectForm.playbackUrl}
-                onChange={(e) => setProjectForm({ ...projectForm, playbackUrl: e.target.value, videoUrl: e.target.value })}
-              />
+              {/* Video source: paste URL or upload file directly */}
+              <div>
+                <label className="u-label mb-1.5 block">Video Source</label>
+                <div className="mb-2 flex gap-2">
+                  <button type="button"
+                    onClick={() => setVideoMode('url')}
+                    className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-mono transition-colors ${videoMode === 'url' ? 'bg-[var(--primary)] text-black' : 'bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-[var(--surface)]'}`}>
+                    <Link size={12} /> Paste URL
+                  </button>
+                  <button type="button"
+                    onClick={() => setVideoMode('upload')}
+                    className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-mono transition-colors ${videoMode === 'upload' ? 'bg-[var(--primary)] text-black' : 'bg-[var(--surface-alt)] text-[var(--foreground-muted)] hover:bg-[var(--surface)]'}`}>
+                    <Upload size={12} /> Upload File
+                  </button>
+                </div>
+                {videoMode === 'url' ? (
+                  <input
+                    type="url"
+                    className="u-input w-full"
+                    placeholder="https://cdn.example.com/video.mp4 or Instagram/YouTube link"
+                    value={projectForm.playbackUrl}
+                    onChange={(e) => setProjectForm({ ...projectForm, playbackUrl: e.target.value, videoUrl: e.target.value })}
+                  />
+                ) : (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                      className="hidden"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    />
+                    <button type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="u-input flex w-full cursor-pointer items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)]">
+                      <Upload size={14} />
+                      {uploadFile ? (
+                        <span className="text-[var(--success)]">{uploadFile.name} ({(uploadFile.size/1024/1024).toFixed(1)} MB)</span>
+                      ) : (
+                        <span>Click to pick MP4 / WebM / MOV (max 500 MB)</span>
+                      )}
+                    </button>
+                    <p className="mt-1 font-mono text-[11px] text-[var(--foreground-subtle)]">
+                      Requires Supabase Storage. File plays continuously in portfolio grid without clicking.
+                    </p>
+                    {uploadProgress && (
+                      <p className="mt-1 font-mono text-[11px] text-[var(--primary)]">{uploadProgress}</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <Field
                 label="Social Reference URL (View on Instagram ↗)" type="url"
                 placeholder="https://www.instagram.com/reel/XXXXX/"

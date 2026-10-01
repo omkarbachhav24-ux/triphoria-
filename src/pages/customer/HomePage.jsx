@@ -145,33 +145,60 @@ export function HomePage({ onNavigate }) {
             <div className="relative">
               <AspectFrame ratio="9:16" radius="panel" className="mx-auto w-full max-w-[340px]">
                 {heroVideo ? (
-                  <button
-                    onClick={() => setOpenVideo(heroVideo)}
-                    className="group u-focus absolute inset-0"
-                    aria-label={`Play ${heroVideo.title}`}
-                  >
-                    {realThumb(heroVideo) ? (
-                      <img
-                        src={realThumb(heroVideo)}
-                        alt={heroVideo.title}
+                  heroVideo.fileUrl ? (
+                    /* Direct upload — autoplay looping, click still opens modal */
+                    <button
+                      onClick={() => setOpenVideo(heroVideo)}
+                      className="group u-focus absolute inset-0"
+                      aria-label={`Play ${heroVideo.title}`}
+                    >
+                      <video
+                        src={heroVideo.fileUrl}
+                        poster={realThumb(heroVideo) || undefined}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="auto"
                         className="absolute inset-0 h-full w-full object-cover"
                       />
-                    ) : (
-                      <div className="absolute inset-0 bg-[var(--surface-alt)]" />
-                    )}
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
-                        <Play size={18} className="translate-x-[2px] fill-current" />
+                      {/* subtle expand icon on hover — doesn't block the video */}
+                      <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur-sm">
+                          <Play size={14} className="translate-x-[1px] fill-current" />
+                        </span>
                       </span>
-                    </span>
-                  </button>
+                    </button>
+                  ) : (
+                    /* Social / URL link — poster + play button */
+                    <button
+                      onClick={() => setOpenVideo(heroVideo)}
+                      className="group u-focus absolute inset-0"
+                      aria-label={`Play ${heroVideo.title}`}
+                    >
+                      {realThumb(heroVideo) ? (
+                        <img
+                          src={realThumb(heroVideo)}
+                          alt={heroVideo.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-[var(--surface-alt)]" />
+                      )}
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur-sm transition-transform group-hover:scale-110">
+                          <Play size={18} className="translate-x-[2px] fill-current" />
+                        </span>
+                      </span>
+                    </button>
+                  )
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--surface-alt)] p-6 text-center">
                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--foreground-subtle)]">
-                      Featured reel
+                      No featured reel
                     </span>
                     <span className="text-[12px] text-[var(--foreground-subtle)]">
-                      Set in Studio&nbsp;Control → Video Library
+                      Admin → CMS Manager → Video Library → upload a video &amp; set as Featured
                     </span>
                   </div>
                 )}
@@ -426,10 +453,22 @@ export function HomePage({ onNavigate }) {
 
 function FeatureTile({ v, onOpen, large = false }) {
   const thumb = realThumb(v);
+  const hasFile = Boolean(v.fileUrl);
   return (
     <button onClick={onOpen} className="group u-focus block w-full text-left" aria-label={`Play ${v.title}`}>
       <AspectFrame ratio={v.aspectRatio || (large ? '16:9' : '9:16')} radius="media" className="w-full">
-        {thumb ? (
+        {hasFile ? (
+          <video
+            src={v.fileUrl}
+            poster={thumb || undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : thumb ? (
           <img
             src={thumb}
             alt={v.title}
@@ -440,7 +479,7 @@ function FeatureTile({ v, onOpen, large = false }) {
           <div className="absolute inset-0 bg-[var(--surface-alt)]" />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-[#00CDB8] opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+        <span className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-[#00CDB8] backdrop-blur-sm transition-opacity ${hasFile ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
           <Play size={15} className="translate-x-[1px] fill-current" />
         </span>
         <div className="absolute inset-x-4 bottom-4">

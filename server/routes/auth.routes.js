@@ -240,18 +240,18 @@ authRouter.post('/editors', requireRole('admin'), onboardingLimiter, async (req,
 // 7. Deactivate Editor (Admin Only)
 authRouter.delete('/editors/:id', requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const activeRow = await queryOne(
-    `SELECT COUNT(*)::int AS count FROM orders
-      WHERE assigned_editor_id = $1 AND status IN ('In Progress', 'Review')`,
-    [id]
-  );
-  const activeCount = activeRow.count;
 
-  if (activeCount > 0) {
-    return res.status(400).json({
-      error: `Cannot deactivate editor while they have ${activeCount} active projects. Please reassign them first.`
-    });
-  }
+  // Auto-return any active orders assigned to this editor back to the
+  // unassigned pool (Pending Approval) so no work is silently orphaned.
+  const now = new Date().toISOString();
+  const returned = await query(
+    `UPDATE orders
+        SET status = 'Pending Approval', assigned_editor_id = NULL, updated_at = $1
+      WHERE assigned_editor_id = $2 AND status IN ('In Progress', 'Review')
+      RETURNING id`,
+    [now, id]
+  );
+  const returnedCount = returned.rowCount || 0;
 
   await query("UPDATE users SET status = 'deactivated' WHERE id = $1 AND role = 'editor'", [id]);
   // Cut off any session already live for this account immediately, rather
@@ -268,5 +268,5 @@ authRouter.delete('/editors/:id', requireRole('admin'), async (req, res) => {
     details: `Super Admin deactivated editor account ID ${id}.`
   });
 
-  res.json({ success: true, message: 'Editor account deactivated' });
+  res.json({ success: true, message: 'Editor account deactivated', ordersReturned: returnedCount });
 });

@@ -393,7 +393,7 @@ ordersRouter.post('/:id/reject', requireRole('admin'), async (req, res) => {
       if (!order) {
         throw new HttpError(404, { error: 'Order not found' });
       }
-      if (order.status !== 'Pending Approval') {
+      if (order.status !== 'Pending Approval' && order.status !== 'In Progress') {
         throw new HttpError(409, {
           error: `Invalid transition: Order is in status '${order.status}', cannot reject.`,
           code: 'CONFLICTING_STATE'

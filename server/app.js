@@ -43,6 +43,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(cookieParser());
+
+// Security: set X-Content-Type-Options on every response
+app.use((_req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); });
 // L4: only storage/upload traffic needs large bodies. Everything else (auth,
 // orders, cms) gets a small limit so a 50 MB JSON blob can't be buffered
 // against login/register as a memory-amplification DoS.

@@ -429,8 +429,8 @@ export function HomePage({ onNavigate }) {
               Name the project, drop a footage link, set a deadline. An editor picks
               it up from there.
             </p>
-            <button onClick={() => onNavigate('/order')} className="btn-primary-lg mx-auto mt-9 bg-[#0B0C0E] text-[#00CDB8] hover:bg-[#17181B]">
-              Start a Project <ArrowRight size={16} />
+            <button onClick={() => onNavigate('/order')} className="btn-accent mx-auto mt-9">
+            Start a Project <ArrowRight size={16} />
             </button>
           </Reveal>
         </div>

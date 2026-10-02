@@ -60,8 +60,10 @@ export function Navbar({ currentPath, onNavigate }) {
     <header
       style={{
         backgroundColor: scrolled
-          ? 'color-mix(in srgb, var(--background) 86%, transparent)'
+          ? 'rgba(11,13,13,0.82)'
           : 'transparent',
+        borderBottom: scrolled ? '1px solid rgba(0,200,181,0.10)' : '1px solid transparent',
+        boxShadow: scrolled ? '0 1px 24px rgba(0,0,0,0.40)' : 'none',
       }}
       className={`sticky top-0 z-50 transition-colors duration-300 ${
         scrolled ? 'border-b border-[var(--border)] backdrop-blur-md' : 'border-b border-transparent'
@@ -69,10 +71,10 @@ export function Navbar({ currentPath, onNavigate }) {
     >
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-4 md:px-8">
         <button onClick={() => go('/')} className="u-focus flex items-center gap-2.5" aria-label="TRIPHORIA home">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-editorial)] bg-[var(--foreground-strong)] font-mono text-[11px] font-bold tracking-tighter text-[var(--background)]">
-            TP
+          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-editorial)] bg-[#C6A15B] font-mono text-[11px] font-bold tracking-tighter text-[#0B0D0D]">
+            T
           </span>
-          <span className="font-mono text-[15px] font-bold tracking-tight text-[var(--foreground-strong)]">
+          <span className="font-mono text-[15px] font-bold tracking-tight" style={{color:'#C6A15B', letterSpacing:'-0.02em'}}>
             TRIPHORIA
           </span>
         </button>

@@ -1,418 +1,448 @@
-/* ─────────────────────────────────────────────────────────────────────
-   TRIPHORIA × MIRANDA — Chief Design Officer Synthesis
-   
-   Two systems, one product:
-   Miranda's old-world broadsheet (parchment, ink black, ember orange)
-   owns every public/marketing surface.
-   
-   Triphoria's cinematic black owns video players and dashboards.
-   
-   Ember orange #c03f13 is the single accent that seals both worlds.
-   ───────────────────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════
+   TRIPHORIA — CINEMATIC PRODUCTION STUDIO DESIGN SYSTEM
+   Version 4.0  |  Chief Design Officer Specification
 
-/* ── FONTS ──────────────────────────────────────────────────────────
-   Miranda substitutes via Google Fonts:
-   Canopee        → Bodoni Moda (heavy serif display, tight tracking)
-   Editorial New  → Source Serif 4 (light workhorse serif)
-   Domaine Display→ Playfair Display (mid-weight bridge)
-   Germgoth       → Pirata One (blackletter accent)
-   ─────────────────────────────────────────────────────────────────*/
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,700;1,6..96,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Pirata+One&family=JetBrains+Mono:wght@400;500&display=swap');
+   Visual concept: A digital post-production studio.
+   Dark when it needs authority. Light when it needs clarity.
+   Teal when something is active. Lime when something matters.
+   Champagne when craftsmanship is being communicated.
+   ════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
-    /* ═══════════════════════════════════════════════════════
-       MIRANDA PALETTE — the broadsheet print stock
-    ═══════════════════════════════════════════════════════ */
-    --color-parchment:    #e2dedb;   /* page canvas */
-    --color-bone-cream:   #cdc6be;   /* card surfaces, panels */
-    --color-ink-black:    #1d1d1b;   /* primary text, borders, banner fills */
-    --color-charcoal:     #69645f;   /* muted secondary text */
-    --color-pure-black:   #000000;   /* deepest fills, emphasis borders */
-    --color-ember-orange: #c03f13;   /* the ONLY chromatic accent */
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RAW PALETTE — Reference only. Use semantic tokens below.
+       Source: TRIPHORIA 3D Visual Experience Spec §6
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --palette-obsidian:      #0B0D0D;
+    --palette-deep-petrol:   #083B38;
+    --palette-forest-teal:   #0F5A54;
+    --palette-cinematic-teal:#00C8B5;
+    --palette-champagne-gold:#C6A15B;
+    --palette-soft-gold:     #D8BE86;
+    --palette-warm-ivory:    #F4F0E7;
+    --palette-paper:         #FAF8F2;
+    --palette-graphite:      #171B1B;
+    --palette-mist:          #A9B1AE;
+    --palette-acid-lime:     #D7FF3F;
+    --palette-white:         #FFFFFF;
 
-    /* ═══════════════════════════════════════════════════════
-       SEMANTIC TOKENS — Miranda applied to Triphoria
-       Light surface = parchment canvas by default
-    ═══════════════════════════════════════════════════════ */
-    --background:          var(--color-parchment);
-    --background-dark:     #07080A;
-    --background-elevated: var(--color-bone-cream);
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SEMANTIC TOKENS — Default scene: cinematic dark (black)
+       The app shell, dashboards, video areas = obsidian/graphite.
+       Public light scenes rebind these via [data-scene] rules.
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-    --surface:        var(--color-bone-cream);
-    --surface-alt:    #d8d1c9;          /* slightly deeper than bone */
-    --surface-hover:  #c9c1b8;
-    --surface-active: #bfb8ae;
+    /* Backgrounds — 3-level depth system */
+    --background:           var(--palette-obsidian);    /* Level 0: base environment */
+    --background-dark:      #070909;                   /* deeper void */
+    --background-elevated:  var(--palette-graphite);   /* Level 1: content surface */
 
-    /* Primary = ink black (filled print ink) */
-    --primary:        var(--color-ink-black);
-    --primary-hover:  var(--color-pure-black);
-    --primary-muted:  rgba(29, 29, 27, 0.08);
-    --primary-subtle: rgba(29, 29, 27, 0.04);
+    /* Surfaces — dimensional panels */
+    --surface:              #1A1F1F;                   /* Level 1: functional panel */
+    --surface-alt:          #212827;                   /* Level 1b: inset/alt */
+    --surface-hover:        #27302F;                   /* hover lift */
+    --surface-active:       #2E3835;                   /* active press */
 
-    /* Accent = ember orange — ONLY chromatic note */
-    --accent:         var(--color-ember-orange);
-    --accent-hover:   #a33510;
-    --accent-muted:   rgba(192, 63, 19, 0.10);
+    /* Glass surfaces — translucent panels */
+    --glass-teal:           rgba(8, 59, 56, 0.40);    /* deep petrol glass */
+    --glass-light:          rgba(255, 255, 255, 0.04); /* minimal light glass */
+    --glass-border:         rgba(0, 200, 181, 0.12);   /* teal glass hairline */
 
-    /* Secondary — ember orange (same, for status/badge roles) */
-    --secondary:       var(--color-ember-orange);
-    --secondary-hover: #a33510;
-    --secondary-muted: rgba(192, 63, 19, 0.08);
+    /* Primary palette — cinematic teal interaction system */
+    --primary:              var(--palette-cinematic-teal);
+    --primary-hover:        #00E8D3;
+    --primary-muted:        rgba(0, 200, 181, 0.12);
+    --primary-subtle:       rgba(0, 200, 181, 0.06);
 
-    /* Teal kept as sub-accent for video/dashboard dark scenes */
-    --teal-deep:    #004C47;
-    --teal-surface: rgba(0, 76, 71, 0.08);
+    /* Accent — acid lime energy (CTA moments ONLY) */
+    --accent:               var(--palette-acid-lime);
+    --accent-hover:         #EAFF6E;
+    --accent-muted:         rgba(215, 255, 63, 0.12);
 
-    /* Text hierarchy — ink spectrum */
-    --foreground:        var(--color-ink-black);
-    --foreground-strong: var(--color-pure-black);
-    --foreground-muted:  var(--color-charcoal);
-    --foreground-subtle: #9a938a;
-    --foreground-dim:    #b0a99f;
+    /* Premium — champagne gold (craftsmanship detail) */
+    --premium:              var(--palette-champagne-gold);
+    --premium-hover:        var(--palette-soft-gold);
+    --premium-muted:        rgba(198, 161, 91, 0.12);
 
-    /* Borders — ink black hairline */
-    --border:        rgba(29, 29, 27, 0.20);
-    --border-subtle: rgba(29, 29, 27, 0.10);
-    --border-strong: rgba(29, 29, 27, 0.45);
+    /* Secondary — deep petrol structure */
+    --secondary:            var(--palette-forest-teal);
+    --secondary-hover:      #115E58;
+    --secondary-muted:      rgba(15, 90, 84, 0.20);
 
-    /* Functional — muted warm versions */
-    --success:       #2d6a4f;
-    --success-muted: rgba(45, 106, 79, 0.10);
-    --warning:       #8b5e3c;
-    --warning-muted: rgba(139, 94, 60, 0.10);
-    --error:         var(--color-ember-orange);
-    --error-muted:   rgba(192, 63, 19, 0.10);
+    /* Deep structural */
+    --teal-deep:            var(--palette-deep-petrol);
+    --teal-surface:         rgba(8, 59, 56, 0.25);
+
+    /* Text hierarchy */
+    --foreground:           var(--palette-warm-ivory);
+    --foreground-strong:    var(--palette-white);
+    --foreground-muted:     var(--palette-mist);
+    --foreground-subtle:    #6B736F;
+    --foreground-dim:       #485050;
+    --foreground-inverse:   var(--palette-obsidian);
+
+    /* Borders — hairlines */
+    --border:               rgba(255, 255, 255, 0.09);
+    --border-subtle:        rgba(255, 255, 255, 0.05);
+    --border-strong:        rgba(255, 255, 255, 0.16);
+    --border-teal:          rgba(0, 200, 181, 0.20);
+
+    /* Functional status */
+    --success:              #22D3A0;
+    --success-muted:        rgba(34, 211, 160, 0.12);
+    --warning:              var(--palette-champagne-gold);
+    --warning-muted:        rgba(198, 161, 91, 0.12);
+    --error:                #F05252;
+    --error-muted:          rgba(240, 82, 82, 0.12);
 
     /* On-colors */
-    --on-primary: var(--color-parchment);
-    --on-accent:  var(--color-parchment);
+    --on-primary:           var(--palette-obsidian);
+    --on-accent:            var(--palette-obsidian);
+    --on-premium:           var(--palette-obsidian);
 
-    /* ═══════════════════════════════════════════════════════
-       TYPOGRAPHY — Miranda's four-face system
-    ═══════════════════════════════════════════════════════ */
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       TYPOGRAPHY — 2 families, strict hierarchy
+       Display/H1/H2: Inter 700–800, tight tracking, confident
+       Body: Inter 400, readable, calm
+       Mono: JetBrains Mono — metadata ONLY
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --font-sans:    'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-display: 'Inter', -apple-system, sans-serif;  /* 700-800 only */
+    --font-mono:    'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
 
-    /* Display / editorial banner font — Bodoni Moda sub for Canopee */
-    --font-display:  'Bodoni Moda', 'Georgia', ui-serif, serif;
-    /* Body / workhorse serif — Source Serif 4 sub for Editorial New */
-    --font-sans:     'Source Serif 4', 'Georgia', ui-serif, serif;
-    /* Mid-weight bridge — Playfair Display sub for Domaine Display */
-    --font-serif:    'Playfair Display', 'Georgia', ui-serif, serif;
-    /* Gothic accent — Pirata One sub for Germgoth */
-    --font-gothic:   'Pirata One', 'Georgia', ui-serif, serif;
-    /* Mono — technical metadata */
-    --font-mono:     'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    /* Type scale */
+    --text-xs:      11px;
+    --text-sm:      13px;
+    --text-base:    15px;
+    --text-lg:      17px;
+    --text-xl:      20px;
+    --text-2xl:     24px;
+    --text-3xl:     32px;
+    --text-4xl:     44px;
+    --text-5xl:     60px;
+    --text-display: 80px;
 
-    /* Type Scale — Miranda */
-    --text-xs:       12px;
-    --text-sm:       14px;
-    --text-base:     16px;
-    --text-lg:       19px;
-    --text-xl:       22px;
-    --text-2xl:      29px;
-    --text-3xl:      43px;
-    --text-4xl:      65px;
-    --text-5xl:      86px;
-    --text-display:  122px;
-
-    /* ═══════════════════════════════════════════════════════
-       SPACING — 4px base unit
-    ═══════════════════════════════════════════════════════ */
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SPACING — 4px base
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     --spacing-unit: 4px;
-    --space-1:   4px;  --space-2:   8px;  --space-3:  12px; --space-4:  16px;
-    --space-5:  20px;  --space-6:  24px;  --space-8:  32px; --space-10: 40px;
-    --space-12: 48px;  --space-16: 64px;  --space-20: 80px; --space-24: 96px;
-    --space-32: 128px;
+    --space-1:  4px;  --space-2:  8px;  --space-3:  12px; --space-4:  16px;
+    --space-5: 20px;  --space-6: 24px;  --space-8:  32px; --space-10: 40px;
+    --space-12:48px;  --space-16:64px;  --space-20: 80px; --space-24: 96px;
+    --space-32:128px;
 
-    /* ═══════════════════════════════════════════════════════
-       RADIUS — Miranda: near-sharp, no pill
-    ═══════════════════════════════════════════════════════ */
-    --radius-sm:     2.88px;   /* tags, buttons — square-ish */
-    --radius-md:     5px;
-    --radius-lg:     7.2px;
-    --radius-xl:     11.52px;  /* cards */
-    --radius-2xl:    11.52px;
-    --radius-full:   11.52px;  /* NO pill — Miranda uses near-sharp */
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RADIUS — near-sharp editorial precision
+       Buttons: full pill  |  Cards: 12px  |  Panels: 8px  |  Media: 4px
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --radius-sm:    2px;
+    --radius-md:    6px;
+    --radius-lg:    10px;
+    --radius-xl:    14px;
+    --radius-2xl:   20px;
+    --radius-full:  9999px;
 
-    --radius-editorial:  2px;
-    --radius-media:      0px;   /* images bleed to edge */
-    --radius-panel:      11.52px;
-    --radius-cards:      11.52px;
-    --radius-badges:     2.88px;
-    --radius-images:     0px;
-    --radius-inputs:     2.88px;
-    --radius-buttons:    2.88px;
+    /* Named semantic radii */
+    --radius-editorial:  2px;   /* near-sharp border for frames */
+    --radius-media:      4px;   /* media frames — minimal rounding */
+    --radius-panel:      10px;  /* glass/surface panels */
+    --radius-cards:      12px;  /* content cards */
+    --radius-badges:     9999px;
+    --radius-inputs:     6px;
+    --radius-buttons:    9999px;  /* full pill */
+    --radius-images:     4px;
 
-    /* ═══════════════════════════════════════════════════════
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
        LAYOUT
-    ═══════════════════════════════════════════════════════ */
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
     --page-max-width: 1280px;
-    --page-padding:   43px;
-    --section-gap:    43px;
+    --page-padding:   32px;
+    --section-gap:    96px;
 
-    /* ═══════════════════════════════════════════════════════
-       SHADOWS — Miranda's directional ink shadow
-    ═══════════════════════════════════════════════════════ */
-    --shadow-sm:  rgba(29, 29, 27, 0.2) -4px 4px 6px 0px;
-    --shadow-md:  rgba(29, 29, 27, 0.2) -5px 3px 6px 0px;
-    --shadow-lg:  rgba(29, 29, 27, 0.25) -6px 6px 12px 0px;
-    --shadow-subtle:  rgba(29, 29, 27, 0.12) 0px 0px 0px 1px inset;
-    --shadow-card:    rgba(29, 29, 27, 0.2) -4px 4px 6px 0px;
-    --shadow-glow-primary: none;
-    --shadow-glow-accent:  none;
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       SHADOWS & ELEVATION — whisper-weight, dark environment
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.30);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.50), 0 2px 4px rgba(0,0,0,0.40);
+    --shadow-lg:  0 12px 32px rgba(0,0,0,0.60), 0 4px 8px rgba(0,0,0,0.40);
+    --shadow-card:      0 2px 8px rgba(0,0,0,0.40), inset 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-subtle:    inset 0 0 0 1px rgba(255,255,255,0.06);
+    --shadow-inset:     inset 0 1px 3px rgba(0,0,0,0.40);
 
-    /* ═══════════════════════════════════════════════════════
-       LEGACY COMPAT ALIASES (keep all old names working)
-    ═══════════════════════════════════════════════════════ */
-    --paper:   var(--color-parchment);
-    --paper-2: var(--color-bone-cream);
-    --paper-3: var(--surface-alt);
-    --pale-lime: #f5fce8; --lime: #D4FF00;
-    --ink: var(--color-ink-black); --ink-muted: var(--color-charcoal);
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       GLOW SYSTEM — purposeful luminance signals
+       Teal: active/interactive  |  Lime: CTA energy  |  Gold: premium
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --glow-teal:  0 0 16px rgba(0,200,181,0.25), 0 0 32px rgba(0,200,181,0.10);
+    --glow-lime:  0 0 20px rgba(215,255,63,0.30), 0 0 40px rgba(215,255,63,0.12);
+    --glow-gold:  0 0 12px rgba(198,161,91,0.20), 0 0 24px rgba(198,161,91,0.08);
+    --glow-none:  none;
 
-    --color-eggshell:    var(--color-parchment);
-    --color-warm-taupe:  var(--color-bone-cream);
-    --color-stone:       var(--surface-alt);
-    --color-ink:         var(--color-ink-black);
-    --color-graphite:    var(--color-charcoal);
-    --color-smoke:       var(--color-charcoal);
-    --color-ash:         var(--foreground-subtle);
-    --color-violet-spark: #0447ff;
-    --color-ember-orange: var(--color-ember-orange);
+    /* Aliases for existing component references */
+    --shadow-glow-primary: var(--glow-teal);
+    --shadow-glow-accent:  var(--glow-lime);
 
-    --color-aubergine-ink: var(--background);
-    --color-espresso:      var(--background);
-    --color-warm-ash:      var(--foreground-muted);
-    --color-onyx:          var(--background-dark);
-    --color-charcoal:      var(--surface);
-    --color-paper-white:   var(--surface);
-    --color-linen:         var(--surface-alt);
-    --color-bone:          var(--surface-alt);
-    --color-mist:          var(--surface);
-    --font-gt-america:     var(--font-sans);
-    --font-sans-serif:     var(--font-sans);
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       DEPTH TOKENS — 3D layering system
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --depth-0: var(--palette-obsidian);              /* background void */
+    --depth-1: var(--palette-graphite);              /* primary surface */
+    --depth-2: #1F2626;                              /* raised panel */
+    --depth-3: #263030;                              /* floating element */
 
-    --color-motion-bg:            var(--background);
-    --color-motion-bg-elevated:   var(--background-elevated);
-    --color-motion-surface:       var(--surface);
-    --color-motion-surface-hover: var(--surface-hover);
-    --color-motion-text:          var(--foreground);
-    --color-motion-text-strong:   var(--foreground-strong);
-    --color-motion-text-muted:    var(--foreground-muted);
-    --color-motion-text-subtle:   var(--foreground-subtle);
-    --color-motion-border:        var(--border);
-    --color-motion-border-subtle: var(--border-subtle);
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       MOTION TOKENS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --motion-fast:   120ms;
+    --motion-normal: 220ms;
+    --motion-slow:   380ms;
+    --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       LEGACY COMPAT ALIASES — preserves all existing component refs
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    --paper:             var(--palette-warm-ivory);
+    --paper-2:           var(--palette-paper);
+    --paper-3:           #EBE7DE;
+    --pale-lime:         rgba(215,255,63,0.08);
+    --ink:               var(--palette-obsidian);
+    --ink-muted:         var(--palette-graphite);
+    --lime:              var(--palette-acid-lime);
+
+    --color-aubergine-ink:  var(--background);
+    --color-espresso:       var(--background);
+    --color-warm-ash:       var(--foreground-muted);
+    --color-graphite:       var(--foreground-subtle);
+    --color-stone:          var(--border);
+    --color-onyx:           var(--background-dark);
+    --color-charcoal:       var(--surface);
+    --color-paper-white:    var(--surface);
+    --color-linen:          var(--surface-alt);
+    --color-bone:           var(--surface-alt);
+    --color-mist:           var(--surface);
+    --font-gt-america:      var(--font-sans);
+    --font-sans-serif:      var(--font-sans);
+
+    --color-motion-bg:             var(--background);
+    --color-motion-bg-elevated:    var(--background-elevated);
+    --color-motion-surface:        var(--surface);
+    --color-motion-surface-hover:  var(--surface-hover);
+    --color-motion-text:           var(--foreground);
+    --color-motion-text-strong:    var(--foreground-strong);
+    --color-motion-text-muted:     var(--foreground-muted);
+    --color-motion-text-subtle:    var(--foreground-subtle);
+    --color-motion-border:         var(--border);
+    --color-motion-border-subtle:  var(--border-subtle);
 
     --surface-linen-canvas: var(--surface);
     --surface-paper-card:   var(--surface);
     --surface-bone-panel:   var(--surface-alt);
+
+    /* Named radius aliases for legacy components */
+    --radius-badges:  9999px;
+    --radius-images:  4px;
+    --radius-buttons: 9999px;
   }
 
-  /* ═══════════════════════════════════════════════════════
-     SCENE SYSTEM
-     
-     Public pages = Miranda parchment (default + data-scene='paper')
-     Video/Dashboard = Triphoria cinematic black (data-scene='black')
-     Accent bridge: ember orange reads on BOTH surfaces
-  ═══════════════════════════════════════════════════════ */
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     SCENE SYSTEM — cinematic room-to-room transitions
+     Scene 01 HERO:        black (obsidian/deep-petrol)
+     Scene 02 SHOWREEL:    black (graphite/obsidian)
+     Scene 03 WORKFLOW:    paper (warm ivory / deep petrol)
+     Scene 04 WORK:        black (deep petrol / teal)
+     Scene 05 WHY:         black (obsidian / graphite)
+     Scene 06 SERVICES:    paper (warm ivory / paper)
+     Scene 07 CTA:         black (acid lime energy moment)
+     Scene 09 FOOTER:      black (obsidian / champagne details)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
   .scene {
     background-color: var(--background);
     color: var(--foreground);
   }
 
-  /* ── CINEMATIC BLACK — video hero, showreel, dashboard ────────── */
-  [data-scene='black'] {
-    --background:          #0B0C0E;
-    --background-dark:     #07080A;
-    --background-elevated: #17181B;
-    --surface:             #17181B;
-    --surface-alt:         #1F2024;
-    --surface-hover:       #26272C;
-    --surface-active:      #2E3036;
-    --foreground:          #EDE8E2;    /* parchment-warm white, not pure white */
-    --foreground-strong:   #F5F0EA;
-    --foreground-muted:    #9A938A;    /* matches Miranda charcoal warmth */
-    --foreground-subtle:   #6B6560;
-    --foreground-dim:      #524D48;
-    --border:              rgba(226, 222, 219, 0.10);
-    --border-subtle:       rgba(226, 222, 219, 0.06);
-    --border-strong:       rgba(226, 222, 219, 0.20);
-    /* In black scenes: ember orange is the primary accent */
-    --primary:             var(--color-ember-orange);
-    --primary-hover:       #a33510;
-    --primary-muted:       rgba(192, 63, 19, 0.15);
-    --primary-subtle:      rgba(192, 63, 19, 0.08);
-    --on-primary:          var(--color-parchment);
-    --accent:              var(--color-ember-orange);
-    --accent-hover:        #a33510;
-    --on-accent:           var(--color-parchment);
-    --secondary:           #c8c0b8;
-    --secondary-hover:     #d5cec7;
-    --secondary-muted:     rgba(200, 192, 184, 0.12);
-    --teal-deep:           #004C47;
-    --success:             #34D399;
-    --success-muted:       rgba(52, 211, 153, 0.15);
-    --warning:             #FBBF24;
-    --warning-muted:       rgba(251, 191, 36, 0.15);
-    --error:               #f97060;
-    --error-muted:         rgba(249, 112, 96, 0.15);
-    --shadow-glow-primary: 0 0 20px rgba(192, 63, 19, 0.25);
-    --shadow-glow-accent:  0 0 20px rgba(192, 63, 19, 0.20);
-    --shadow-subtle:       inset 0 0 0 1px rgba(226, 222, 219, 0.06);
-    --shadow-card:         0 4px 20px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(226,222,219,0.06);
-    --radius-cards:        11.52px;
-    --radius-buttons:      2.88px;
-  }
+  /* ── DEFAULT / BLACK — deep cinematic environment ── */
+  /* (no data-scene attribute = default black/obsidian scene) */
 
-  /* ── PAPER — Miranda primary editorial surface ────────────────── */
+  /* ── PAPER — editorial light: warm ivory for workflow/services ── */
   [data-scene='paper'] {
-    --background:          var(--color-parchment);
-    --background-elevated: var(--color-bone-cream);
-    --surface:             var(--color-bone-cream);
-    --surface-alt:         #d8d1c9;
-    --surface-hover:       #c9c1b8;
-    --foreground:          var(--color-ink-black);
-    --foreground-strong:   var(--color-pure-black);
-    --foreground-muted:    var(--color-charcoal);
-    --foreground-subtle:   #9a938a;
-    --foreground-dim:      #b0a99f;
-    --border:              rgba(29, 29, 27, 0.20);
-    --border-subtle:       rgba(29, 29, 27, 0.10);
-    --border-strong:       rgba(29, 29, 27, 0.45);
-    --primary:             var(--color-ink-black);
-    --primary-hover:       var(--color-pure-black);
-    --primary-muted:       rgba(29, 29, 27, 0.08);
-    --on-primary:          var(--color-parchment);
-    --accent:              var(--color-ember-orange);
-    --on-accent:           var(--color-parchment);
-    --success:             #2d6a4f;
-    --success-muted:       rgba(45, 106, 79, 0.10);
-    --warning:             #8b5e3c;
-    --warning-muted:       rgba(139, 94, 60, 0.10);
-    --error:               var(--color-ember-orange);
-    --error-muted:         rgba(192, 63, 19, 0.10);
-    --shadow-glow-primary: none;
+    --background:          var(--palette-warm-ivory);
+    --background-dark:     var(--palette-paper);
+    --background-elevated: var(--palette-paper);
+    --surface:             var(--palette-paper);
+    --surface-alt:         #EBE7DE;
+    --surface-hover:       #E2DDD3;
+    --surface-active:      #D8D3C9;
+    --depth-1:             var(--palette-paper);
+    --depth-2:             #EBE7DE;
+    --depth-3:             #E2DDD3;
+    --foreground:          var(--palette-obsidian);
+    --foreground-strong:   #000000;
+    --foreground-muted:    #3D4441;
+    --foreground-subtle:   #6B736F;
+    --foreground-dim:      #9AA19D;
+    --foreground-inverse:  var(--palette-white);
+    --border:              rgba(11, 13, 13, 0.10);
+    --border-subtle:       rgba(11, 13, 13, 0.06);
+    --border-strong:       rgba(11, 13, 13, 0.18);
+    --border-teal:         rgba(0, 200, 181, 0.25);
+    --primary:             var(--palette-deep-petrol);
+    --primary-hover:       var(--palette-forest-teal);
+    --primary-muted:       rgba(8, 59, 56, 0.08);
+    --on-primary:          var(--palette-warm-ivory);
+    --accent:              var(--palette-cinematic-teal);
+    --accent-hover:        #00E8D3;
+    --on-accent:           var(--palette-obsidian);
+    --shadow-card:
+      0 2px 8px rgba(11,13,13,0.08),
+      inset 0 0 0 1px rgba(11,13,13,0.06);
+    --shadow-subtle:       inset 0 0 0 1px rgba(11,13,13,0.06);
+    --glow-teal:           0 0 12px rgba(0,200,181,0.15);
+    --glow-lime:           none;
+    --shadow-glow-primary: 0 0 12px rgba(8,59,56,0.15);
     --shadow-glow-accent:  none;
-    --shadow-subtle:       rgba(29, 29, 27, 0.12) 0px 0px 0px 1px inset;
-    --shadow-card:         rgba(29, 29, 27, 0.2) -4px 4px 6px 0px;
-    --radius-cards:        11.52px;
-    --radius-buttons:      2.88px;
   }
 
-  /* ── PALE LIME ────────────────────────────────────────────────── */
-  [data-scene='pale-lime'] {
-    --background:          #f5fce8;
-    --background-elevated: #f0fad8;
-    --surface:             #f0fad8;
-    --surface-alt:         #e4f5c0;
-    --foreground:          #1a1f0e;
-    --foreground-strong:   #0b0c0e;
-    --foreground-muted:    #55603a;
-    --foreground-subtle:   #7e8a5e;
-    --border:              rgba(11, 12, 14, 0.14);
-    --border-subtle:       rgba(11, 12, 14, 0.08);
-    --border-strong:       rgba(11, 12, 14, 0.28);
-    --primary:             #1a1f0e;
-    --primary-hover:       #0b0c0e;
-    --primary-muted:       rgba(26, 31, 14, 0.08);
-    --on-primary:          #f5fce8;
-    --accent:              var(--color-ember-orange);
-    --shadow-glow-primary: none;
-    --radius-buttons:      2.88px;
-  }
-
-  /* ── GREEN / DARK TEAL ───────────────────────────────────────── */
-  [data-scene='green'] {
-    --background:          #04322F;
-    --background-elevated: #0A403B;
-    --surface:             #0A403B;
-    --surface-alt:         #0E4A44;
-    --surface-hover:       #135049;
-    --foreground:          #E8DED5;    /* parchment-warm on dark green */
-    --foreground-strong:   #F5EDE4;
-    --foreground-muted:    #9EC7BE;
-    --foreground-subtle:   #6E9A91;
-    --border:              rgba(226, 222, 219, 0.12);
-    --border-subtle:       rgba(226, 222, 219, 0.07);
-    --border-strong:       rgba(226, 222, 219, 0.22);
-    --primary:             var(--color-ember-orange);
-    --on-primary:          var(--color-parchment);
-    --radius-buttons:      2.88px;
-  }
-
-  /* ── TEAL ────────────────────────────────────────────────────── */
+  /* ── TEAL — deep petrol structural scene ── */
   [data-scene='teal'] {
-    --background:          #00CDB8;
-    --background-elevated: #00B7A5;
-    --surface:             rgba(4,36,31,0.06);
-    --surface-alt:         rgba(4,36,31,0.10);
-    --foreground:          #04241F;
-    --foreground-strong:   #001A16;
-    --foreground-muted:    rgba(4,36,31,0.66);
-    --foreground-subtle:   rgba(4,36,31,0.50);
-    --border:              rgba(4,36,31,0.20);
-    --border-subtle:       rgba(4,36,31,0.12);
-    --border-strong:       rgba(4,36,31,0.34);
-    --primary:             #04241F;
-    --primary-hover:       #001A16;
-    --on-primary:          #E9FFFB;
-    --accent:              var(--color-ember-orange);
-    --on-accent:           var(--color-parchment);
-    --shadow-glow-primary: none;
-    --radius-buttons:      2.88px;
+    --background:          var(--palette-deep-petrol);
+    --background-dark:     #061F1D;
+    --background-elevated: var(--palette-forest-teal);
+    --surface:             rgba(255,255,255,0.06);
+    --surface-alt:         rgba(255,255,255,0.10);
+    --surface-hover:       rgba(255,255,255,0.14);
+    --depth-1:             var(--palette-forest-teal);
+    --depth-2:             #155650;
+    --depth-3:             #1D706A;
+    --foreground:          var(--palette-warm-ivory);
+    --foreground-strong:   var(--palette-white);
+    --foreground-muted:    rgba(244,240,231,0.70);
+    --foreground-subtle:   rgba(244,240,231,0.45);
+    --foreground-dim:      rgba(244,240,231,0.28);
+    --border:              rgba(255,255,255,0.12);
+    --border-subtle:       rgba(255,255,255,0.07);
+    --border-strong:       rgba(255,255,255,0.22);
+    --border-teal:         rgba(0,200,181,0.30);
+    --primary:             var(--palette-cinematic-teal);
+    --primary-hover:       #00E8D3;
+    --on-primary:          var(--palette-obsidian);
+    --accent:              var(--palette-acid-lime);
+    --on-accent:           var(--palette-obsidian);
+    --premium:             var(--palette-champagne-gold);
+    --shadow-glow-primary: var(--glow-teal);
+    --shadow-glow-accent:  var(--glow-lime);
   }
 
-  /* ── LIME ────────────────────────────────────────────────────── */
-  [data-scene='lime'] {
-    --background:          #D4FF00;
-    --background-elevated: #E4FF4D;
-    --surface:             rgba(20,23,10,0.05);
-    --surface-alt:         rgba(20,23,10,0.09);
-    --foreground:          #14170A;
-    --foreground-strong:   #0B0C0E;
-    --foreground-muted:    rgba(20,23,10,0.62);
-    --foreground-subtle:   rgba(20,23,10,0.46);
-    --border:              rgba(20,23,10,0.20);
-    --border-subtle:       rgba(20,23,10,0.12);
-    --border-strong:       rgba(20,23,10,0.34);
-    --primary:             #0B0C0E;
-    --primary-hover:       #1C1E22;
-    --on-primary:          #F1FFC9;
-    --accent:              var(--color-ember-orange);
-    --on-accent:           var(--color-parchment);
-    --shadow-glow-primary: none;
-    --radius-buttons:      2.88px;
-  }
-
-  /* ── DARK EDITORIAL ─────────────────────────────────────────── */
+  /* ── DARK EDITORIAL — slightly elevated from black ── */
   [data-scene='dark-editorial'] {
-    --background:          #0B0C0E;
-    --background-elevated: #101114;
-    --surface:             #101114;
-    --surface-alt:         #16181C;
-    --foreground:          #EDE8E2;
-    --foreground-strong:   #F5F0EA;
-    --foreground-muted:    #9A938A;
-    --foreground-subtle:   #6B6560;
-    --border:              rgba(226, 222, 219, 0.09);
-    --border-subtle:       rgba(226, 222, 219, 0.05);
-    --border-strong:       rgba(226, 222, 219, 0.16);
-    --primary:             var(--color-ember-orange);
-    --primary-hover:       #a33510;
-    --primary-muted:       rgba(192, 63, 19, 0.15);
-    --on-primary:          var(--color-parchment);
-    --shadow-glow-primary: 0 0 20px rgba(192, 63, 19, 0.25);
-    --radius-buttons:      2.88px;
+    --background:          var(--palette-graphite);
+    --background-dark:     var(--palette-obsidian);
+    --background-elevated: #1F2626;
+    --surface:             #1F2626;
+    --surface-alt:         #262E2D;
+    --surface-hover:       #2E3735;
+    --depth-1:             #1F2626;
+    --depth-2:             #262E2D;
+    --depth-3:             #2E3735;
+    --foreground:          var(--palette-warm-ivory);
+    --foreground-strong:   var(--palette-white);
+    --foreground-muted:    var(--palette-mist);
+    --foreground-subtle:   #6B736F;
+    --border:              rgba(255,255,255,0.09);
+    --border-subtle:       rgba(255,255,255,0.05);
+    --border-strong:       rgba(255,255,255,0.16);
+    --border-teal:         rgba(0,200,181,0.18);
+    --primary:             var(--palette-cinematic-teal);
+    --primary-hover:       #00E8D3;
+    --on-primary:          var(--palette-obsidian);
+    --accent:              var(--palette-acid-lime);
+    --on-accent:           var(--palette-obsidian);
+    --shadow-glow-primary: var(--glow-teal);
+    --shadow-glow-accent:  var(--glow-lime);
   }
 
-  /* ═══════════════════════════════════════════════════════
-     GLOBAL BODY — parchment, Source Serif 4 weight 300
-  ═══════════════════════════════════════════════════════ */
+  /* ── PALE-LIME — acid lime energy (CTA section) ── */
+  [data-scene='pale-lime'] {
+    --background:          #0B0D0D;
+    --background-dark:     #070909;
+    --background-elevated: #141818;
+    --surface:             rgba(215,255,63,0.06);
+    --surface-alt:         rgba(215,255,63,0.10);
+    --surface-hover:       rgba(215,255,63,0.14);
+    --foreground:          var(--palette-warm-ivory);
+    --foreground-strong:   var(--palette-white);
+    --foreground-muted:    var(--palette-mist);
+    --foreground-subtle:   #6B736F;
+    --border:              rgba(215,255,63,0.20);
+    --border-subtle:       rgba(215,255,63,0.10);
+    --border-strong:       rgba(215,255,63,0.35);
+    --border-teal:         rgba(215,255,63,0.25);
+    --primary:             var(--palette-acid-lime);
+    --primary-hover:       var(--accent-hover, #EAFF6E);
+    --primary-muted:       rgba(215,255,63,0.12);
+    --on-primary:          var(--palette-obsidian);
+    --accent:              var(--palette-cinematic-teal);
+    --on-accent:           var(--palette-obsidian);
+    --shadow-glow-primary: var(--glow-lime);
+    --shadow-glow-accent:  var(--glow-teal);
+  }
+
+  /* ── GREEN — deep forest teal (alternative dark) ── */
+  [data-scene='green'] {
+    --background:          #061F1D;
+    --background-dark:     #040F0E;
+    --background-elevated: var(--palette-deep-petrol);
+    --surface:             rgba(255,255,255,0.05);
+    --surface-alt:         rgba(255,255,255,0.09);
+    --surface-hover:       rgba(255,255,255,0.13);
+    --foreground:          var(--palette-warm-ivory);
+    --foreground-strong:   var(--palette-white);
+    --foreground-muted:    rgba(244,240,231,0.65);
+    --foreground-subtle:   rgba(244,240,231,0.40);
+    --border:              rgba(255,255,255,0.10);
+    --border-subtle:       rgba(255,255,255,0.06);
+    --border-strong:       rgba(255,255,255,0.18);
+    --primary:             var(--palette-cinematic-teal);
+    --on-primary:          var(--palette-obsidian);
+    --accent:              var(--palette-champagne-gold);
+    --on-accent:           var(--palette-obsidian);
+    --shadow-glow-primary: var(--glow-teal);
+    --shadow-glow-accent:  var(--glow-gold);
+  }
+
+  /* ── LIME — pure energy scene (rare) ── */
+  [data-scene='lime'] {
+    --background:          #0B0D0D;
+    --background-elevated: #141818;
+    --surface:             rgba(215,255,63,0.07);
+    --surface-alt:         rgba(215,255,63,0.12);
+    --foreground:          var(--palette-warm-ivory);
+    --foreground-strong:   var(--palette-white);
+    --foreground-muted:    var(--palette-mist);
+    --foreground-subtle:   #6B736F;
+    --border:              rgba(215,255,63,0.18);
+    --border-subtle:       rgba(215,255,63,0.08);
+    --border-strong:       rgba(215,255,63,0.30);
+    --primary:             var(--palette-acid-lime);
+    --on-primary:          var(--palette-obsidian);
+    --accent:              var(--palette-cinematic-teal);
+    --on-accent:           var(--palette-obsidian);
+    --shadow-glow-primary: var(--glow-lime);
+    --shadow-glow-accent:  var(--glow-teal);
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     GLOBAL BODY — cinematic dark by default
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   body {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 400;
     background-color: var(--background);
     color: var(--foreground);
     overflow-x: hidden;
@@ -421,147 +451,152 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Display: Bodoni Moda with negative tracking — woodblock feel */
+  /* Headings: display = powerful cinematic statements */
   h1, h2 {
     font-family: var(--font-display);
-    font-weight: 400;
+    font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 0.95;
     color: var(--foreground-strong);
+    line-height: 1.0;
   }
   h3, h4 {
-    font-family: var(--font-serif);
-    font-weight: 500;
+    font-family: var(--font-sans);
+    font-weight: 700;
     letter-spacing: -0.025em;
-    line-height: 1.15;
     color: var(--foreground-strong);
+    line-height: 1.15;
   }
   h5, h6 {
     font-family: var(--font-sans);
-    font-weight: 300;
+    font-weight: 600;
     letter-spacing: -0.015em;
     color: var(--foreground-strong);
   }
 }
 
-/* ═══════════════════════════════════════════════════════
-   SCROLLBAR — warm ink on parchment
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   SCROLLBAR — subtle teal on dark
+════════════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(29,29,27,0.25); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: rgba(29,29,27,0.50); }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 200, 181, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 200, 181, 0.45); }
 
-/* ═══════════════════════════════════════════════════════
-   TYPOGRAPHY SYSTEM — Miranda's compressed scale
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY SYSTEM — cinematic precision
+   Display/H1/H2: 800 weight, tight, statement-making
+   Body: 400, legible, calm
+   Mono: metadata/technical labels only
+════════════════════════════════════════════════════════════════════ */
 
-/* Oversize display — Bodoni Moda, compressed woodblock */
+/* CINEMATIC DISPLAY — hero statements */
 .type-display {
   font-family: var(--font-display);
-  font-size: clamp(48px, 8vw, 86px);
-  line-height: 0.91;
-  letter-spacing: -0.04em;
-  font-weight: 400;
+  font-size: clamp(52px, 8vw, var(--text-display));
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-weight: 800;
   color: var(--foreground-strong);
 }
 
 .type-h1 {
   font-family: var(--font-display);
-  font-size: clamp(36px, 5.5vw, 65px);
-  line-height: 0.93;
-  letter-spacing: -0.035em;
-  font-weight: 400;
+  font-size: clamp(36px, 5.5vw, 64px);
+  line-height: 1.0;
+  letter-spacing: -0.04em;
+  font-weight: 800;
   color: var(--foreground-strong);
 }
 
 .type-h2 {
-  font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 43px);
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.5vw, 44px);
   line-height: 1.08;
-  letter-spacing: -0.025em;
-  font-weight: 500;
+  letter-spacing: -0.035em;
+  font-weight: 700;
   color: var(--foreground-strong);
 }
 
 .type-h3 {
-  font-family: var(--font-serif);
-  font-size: clamp(19px, 2.2vw, 29px);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: clamp(20px, 2.2vw, 28px);
+  line-height: 1.20;
+  letter-spacing: -0.025em;
+  font-weight: 700;
   color: var(--foreground-strong);
 }
 
 .type-body-lg {
-  font-family: var(--font-sans);
-  font-size: 19px;
-  line-height: 1.36;
+  font-size: var(--text-lg);
+  line-height: 1.65;
   letter-spacing: -0.01em;
-  font-weight: 300;
   color: var(--foreground-muted);
 }
 
 .type-body {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.27;
+  font-size: var(--text-base);
+  line-height: 1.65;
   letter-spacing: -0.01em;
-  font-weight: 300;
   color: var(--foreground-muted);
 }
 
 .type-body-sm {
-  font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.18;
-  letter-spacing: -0.01em;
-  font-weight: 300;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  letter-spacing: -0.005em;
   color: var(--foreground-muted);
 }
 
+/* METADATA — monospace production language */
 .type-label {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  line-height: 1.40;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.4;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 300;
+  font-weight: 500;
   color: var(--foreground-subtle);
 }
 
 .type-mono {
   font-family: var(--font-mono);
   font-size: 12px;
-  letter-spacing: 0;
-  line-height: 1.60;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
 }
 
-/* Eyebrow — monospaced, all-caps, charcoal */
+/* EYEBROW — technical production metadata */
 .type-eyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-size: 11px;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  font-weight: 400;
-  color: var(--foreground-subtle);
+  font-weight: 500;
+  color: var(--primary);
 }
 
 /* Legacy compat */
-.font-display-hero  { font-family:var(--font-display); font-size:clamp(48px,8vw,86px); line-height:0.91; letter-spacing:-0.04em; font-weight:400; color:var(--foreground-strong); }
-.font-heading-lg    { font-family:var(--font-display); font-size:clamp(32px,5vw,65px); line-height:0.93; letter-spacing:-0.035em; font-weight:400; color:var(--foreground-strong); }
-.font-heading       { font-family:var(--font-serif); font-size:clamp(22px,3vw,43px); line-height:1.08; letter-spacing:-0.025em; font-weight:500; color:var(--foreground-strong); }
-.font-subheading    { font-family:var(--font-serif); font-size:22px; line-height:1.18; letter-spacing:-0.025em; font-weight:500; color:var(--foreground-strong); }
-.font-body-lead     { font-family:var(--font-sans); font-size:19px; line-height:1.36; letter-spacing:-0.01em; font-weight:300; color:var(--foreground-muted); }
-.font-body-regular  { font-family:var(--font-sans); font-size:16px; line-height:1.27; letter-spacing:-0.01em; font-weight:300; color:var(--foreground-muted); }
-.font-caption       { font-family:var(--font-sans); font-size:14px; line-height:1.18; letter-spacing:-0.01em; font-weight:300; color:var(--foreground-subtle); }
-.font-mono-meta     { font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; }
+.font-display-hero  { font-family:var(--font-display); font-size:clamp(52px,8vw,80px); line-height:0.95; letter-spacing:-0.045em; font-weight:800; color:var(--foreground-strong); }
+.font-heading-lg    { font-family:var(--font-display); font-size:clamp(32px,5vw,56px); line-height:1.0;  letter-spacing:-0.04em;  font-weight:800; color:var(--foreground-strong); }
+.font-heading       { font-family:var(--font-display); font-size:clamp(24px,3vw,40px); line-height:1.08; letter-spacing:-0.035em; font-weight:700; color:var(--foreground-strong); }
+.font-subheading    { font-family:var(--font-sans);    font-size:22px;  line-height:1.25; letter-spacing:-0.02em; font-weight:600; color:var(--foreground-strong); }
+.font-body-lead     { font-size:18px; line-height:1.65; color:var(--foreground-muted); }
+.font-body-regular  { font-size:16px; line-height:1.65; color:var(--foreground-muted); }
+.font-caption       { font-size:13px; line-height:1.50; color:var(--foreground-subtle); }
+.font-mono-meta     { font-family:var(--font-mono); letter-spacing:0.06em; text-transform:uppercase; font-size:11px; }
 
-/* ═══════════════════════════════════════════════════════
-   BUTTON SYSTEM — Miranda's near-sharp 2.88px print aesthetic
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   BUTTON SYSTEM — full pill, purposeful hierarchy
+   Primary: teal (technology/interaction)
+   Accent:  lime (energy/CTA)
+   Ghost:   outline (secondary action)
+   Danger:  error red
+════════════════════════════════════════════════════════════════════ */
 
-/* Primary — ink black, parchment text */
+/* PRIMARY — cinematic teal pill */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -570,21 +605,28 @@
   background-color: var(--primary);
   color: var(--on-primary);
   font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  padding: 11px 24px;
-  border-radius: 2.88px;
+  padding: 10px 22px;
+  border-radius: 9999px;
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease, box-shadow 0.12s ease;
   white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-fast) var(--ease-out),
+              transform var(--motion-fast) var(--ease-out);
 }
-.btn-primary:hover   { background-color: var(--primary-hover); }
-.btn-primary:active  { opacity: 0.85; }
-.btn-primary:focus-visible { outline: 2px solid var(--color-ember-orange); outline-offset: 3px; }
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  box-shadow: var(--glow-teal);
+  transform: translateY(-1px);
+}
+.btn-primary:active  { transform: translateY(0); box-shadow: none; }
+.btn-primary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 
+/* PRIMARY LG */
 .btn-primary-lg {
   display: inline-flex;
   align-items: center;
@@ -593,21 +635,28 @@
   background-color: var(--primary);
   color: var(--on-primary);
   font-family: var(--font-sans);
-  font-size: 16px;
-  font-weight: 300;
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  padding: 14px 32px;
-  border-radius: 2.88px;
+  padding: 13px 30px;
+  border-radius: 9999px;
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease;
   white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-normal) var(--ease-out),
+              transform var(--motion-fast) var(--ease-spring);
 }
-.btn-primary-lg:hover { background-color: var(--primary-hover); }
-.btn-primary-lg:focus-visible { outline: 2px solid var(--color-ember-orange); outline-offset: 3px; }
+.btn-primary-lg:hover {
+  background-color: var(--primary-hover);
+  box-shadow: var(--glow-teal);
+  transform: translateY(-2px);
+}
+.btn-primary-lg:active  { transform: translateY(0); }
+.btn-primary-lg:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 
-/* Ghost — 1px ink border, transparent fill */
+/* GHOST — outline pill */
 .btn-ghost {
   display: inline-flex;
   align-items: center;
@@ -616,21 +665,25 @@
   background-color: transparent;
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 500;
   letter-spacing: -0.01em;
-  padding: 11px 22px;
-  border-radius: 2.88px;
+  padding: 10px 20px;
+  border-radius: 9999px;
   border: 1px solid var(--border);
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out),
+              border-color var(--motion-fast) var(--ease-out);
 }
-.btn-ghost:hover { background-color: var(--surface-hover); border-color: var(--border-strong); }
-.btn-ghost:focus-visible { outline: 2px solid var(--color-ember-orange); outline-offset: 3px; }
+.btn-ghost:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.btn-ghost:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
 
-/* Accent — ember orange */
+/* ACCENT — acid lime energy (CTA moments) */
 .btn-accent {
   display: inline-flex;
   align-items: center;
@@ -639,21 +692,28 @@
   background-color: var(--accent);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 300;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: -0.01em;
   padding: 11px 24px;
-  border-radius: 2.88px;
+  border-radius: 9999px;
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: background-color 0.15s ease;
   white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-normal) var(--ease-out),
+              transform var(--motion-fast) var(--ease-spring);
 }
-.btn-accent:hover { background-color: var(--accent-hover); }
-.btn-accent:focus-visible { outline: 2px solid var(--color-ember-orange); outline-offset: 3px; }
+.btn-accent:hover {
+  background-color: var(--accent-hover);
+  box-shadow: var(--glow-lime);
+  transform: translateY(-1px);
+}
+.btn-accent:active  { transform: translateY(0); }
+.btn-accent:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-/* Danger */
+/* DANGER */
 .btn-danger {
   display: inline-flex;
   align-items: center;
@@ -663,79 +723,85 @@
   color: var(--error);
   font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 300;
+  font-weight: 500;
   padding: 10px 20px;
-  border-radius: 2.88px;
+  border-radius: 9999px;
   border: 1px solid var(--error);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--motion-fast) var(--ease-out);
 }
 .btn-danger:hover { background-color: var(--error-muted); }
-.btn-danger:focus-visible { outline: 2px solid var(--color-ember-orange); outline-offset: 3px; }
+.btn-danger:focus-visible { outline: 2px solid var(--error); outline-offset: 3px; }
 
-/* Announcement pill — stays sharp for Miranda */
+/* Announcement pill */
 .announcement-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background-color: var(--surface-alt);
-  color: var(--foreground-muted);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 300;
-  padding: 4px 14px;
-  border-radius: 2.88px;
-  border: 1px solid var(--border);
+  background-color: var(--primary-muted);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-teal);
 }
 
-/* ═══════════════════════════════════════════════════════
-   SURFACES & CARDS — bone cream, 11.52px radius, ink shadow
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   SURFACES & CARDS — dimensional, dark, purposeful
+════════════════════════════════════════════════════════════════════ */
 
 .triphoria-surface {
   background-color: var(--surface);
-  border-radius: 11.52px;
+  border-radius: var(--radius-cards);
   border: 1px solid var(--border);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--motion-normal) var(--ease-out),
+              box-shadow var(--motion-normal) var(--ease-out),
+              transform var(--motion-normal) var(--ease-out);
 }
 .triphoria-surface:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-card);
+  border-color: var(--border-teal);
+  box-shadow: var(--shadow-md), var(--glow-teal);
+  transform: translateY(-2px);
 }
 
 .triphoria-surface-elevated {
-  background-color: var(--surface);
-  border-radius: 11.52px;
+  background-color: var(--background-elevated);
+  border-radius: var(--radius-cards);
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-lg);
 }
 
-/* ═══════════════════════════════════════════════════════
-   EDITORIAL PRIMITIVES
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   EDITORIAL PRIMITIVES — production studio aesthetic
+════════════════════════════════════════════════════════════════════ */
 
 .u-frame {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius-editorial);
 }
 .u-frame-elevated {
   background-color: var(--background-elevated);
   border: 1px solid var(--border);
-  border-radius: 11.52px;
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
 .u-media {
   position: relative;
   overflow: hidden;
-  background: #000;
-  border-radius: 0px;   /* Miranda: images bleed to edge */
+  background: var(--palette-obsidian);
+  border-radius: var(--radius-media);
 }
 .u-media-sharp {
   position: relative;
   overflow: hidden;
-  background: #000;
-  border-radius: 0px;
+  background: var(--palette-obsidian);
+  border-radius: var(--radius-editorial);
 }
 .hairline {
   border: 0;
@@ -743,76 +809,93 @@
   margin: 0;
 }
 
-/* Tag / badge — 2.88px square, ember orange for accent */
+/* Tags / metadata pills */
 .u-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--foreground-subtle);
-  padding: 2px 8px;
+  padding: 3px 9px;
   border: 1px solid var(--border);
-  border-radius: 2.88px;
+  border-radius: 9999px;
   background: transparent;
 }
 .u-tag-solid {
   color: var(--on-primary);
   background: var(--primary);
   border-color: transparent;
+  box-shadow: var(--glow-teal);
 }
 
-/* Focus ring — ember orange */
+/* Focus ring — teal/lime for context */
 .u-focus:focus-visible {
-  outline: 1.5px solid var(--color-ember-orange);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-/* ═══════════════════════════════════════════════════════
-   FORM INPUTS — 2.88px radius, ink border
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   GLASS SYSTEM — translucent surfaces for floating objects
+════════════════════════════════════════════════════════════════════ */
+.glass-panel {
+  background: var(--glass-teal);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+}
+.glass-light {
+  background: var(--glass-light);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FORM INPUTS — dark production aesthetic
+════════════════════════════════════════════════════════════════════ */
 
 .triphoria-input,
 .u-input {
   width: 100%;
   background-color: var(--background-elevated);
   border: 1px solid var(--border);
-  border-radius: 2.88px;
+  border-radius: var(--radius-inputs);
   padding: 10px 14px;
   color: var(--foreground);
-  font-size: 15px;
+  font-size: 14px;
   font-family: var(--font-sans);
-  font-weight: 300;
-  letter-spacing: -0.01em;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-fast) var(--ease-out);
 }
 .triphoria-input:focus,
 .u-input:focus {
-  border-color: var(--foreground-muted);
-  box-shadow: rgba(29, 29, 27, 0.15) 0px 0px 0px 1px inset;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-muted);
 }
 .triphoria-input::placeholder,
-.u-input::placeholder {
-  color: var(--foreground-subtle);
-  font-weight: 300;
-}
+.u-input::placeholder { color: var(--foreground-subtle); }
+
 .u-label {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 300;
-  letter-spacing: -0.01em;
-  color: var(--foreground-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--foreground-subtle);
   display: block;
   margin-bottom: 6px;
 }
 select.u-input {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2369645f' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A9B1AE' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 32px;
@@ -824,59 +907,108 @@ textarea.u-input { min-height: 80px; resize: vertical; }
   to   { opacity: 1; }
 }
 
-/* ═══════════════════════════════════════════════════════
-   STATUS BADGES — Miranda-warm versions
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   STATUS BADGES — semantic production states
+════════════════════════════════════════════════════════════════════ */
 .badge-status {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
-  border-radius: 2.88px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.badge-pending   { background: rgba(139,94,60,0.10);  color: #8b5e3c;              border: 1px solid rgba(139,94,60,0.25); }
-.badge-progress  { background: var(--primary-muted);  color: var(--primary);       border: 1px solid var(--border); }
-.badge-review    { background: rgba(105,100,95,0.10); color: var(--color-charcoal); border: 1px solid rgba(105,100,95,0.25); }
-.badge-completed { background: var(--success-muted);  color: var(--success);       border: 1px solid rgba(45,106,79,0.25); }
-.badge-rejected  { background: var(--error-muted);    color: var(--error);         border: 1px solid rgba(192,63,19,0.25); }
+.badge-pending   { background:var(--warning-muted);   color:var(--warning);   border:1px solid rgba(198,161,91,0.22); }
+.badge-progress  { background:var(--primary-muted);   color:var(--primary);   border:1px solid rgba(0,200,181,0.22); }
+.badge-review    { background:rgba(0,200,181,0.10);   color:var(--palette-cinematic-teal); border:1px solid rgba(0,200,181,0.20); }
+.badge-completed { background:var(--success-muted);   color:var(--success);   border:1px solid rgba(34,211,160,0.22); }
+.badge-rejected  { background:var(--error-muted);     color:var(--error);     border:1px solid rgba(240,82,82,0.22); }
 
-/* ═══════════════════════════════════════════════════════
-   ENVIRONMENTAL TEXTURES — subtle paper grain
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   ENVIRONMENTAL TEXTURES — subtle studio grid
+════════════════════════════════════════════════════════════════════ */
+
+/* On dark scenes: barely-visible grid of teal hairlines */
 .film-grid-env {
   background-image:
-    linear-gradient(to right, rgba(29,29,27,0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(29,29,27,0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(to right, rgba(0,200,181,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,200,181,0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
+
+/* On light scenes */
+[data-scene='paper'] .film-grid-env {
+  background-image:
+    linear-gradient(to right, rgba(8,59,56,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(8,59,56,0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
 .film-scanlines {
-  background: repeating-linear-gradient(
+  background: linear-gradient(
     to bottom,
-    transparent 0px,
-    transparent 3px,
-    rgba(29,29,27,0.025) 3px,
-    rgba(29,29,27,0.025) 4px
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.04) 50%,
+    rgba(0,0,0,0.04)
   );
+  background-size: 100% 3px;
 }
 
-/* ═══════════════════════════════════════════════════════
-   LOGO STRIP
-═══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+   LOGO STRIP — grayscale trust marks
+════════════════════════════════════════════════════════════════════ */
 .customer-logo-strip {
-  filter: grayscale(100%) sepia(10%);
-  opacity: 0.40;
-  transition: opacity 0.2s ease;
+  filter: grayscale(100%) brightness(0.6);
+  opacity: 0.5;
+  transition: opacity var(--motion-normal) var(--ease-out),
+              filter var(--motion-normal) var(--ease-out);
 }
-.customer-logo-strip:hover { opacity: 0.70; }
+.customer-logo-strip:hover {
+  opacity: 0.8;
+  filter: grayscale(60%) brightness(0.8);
+}
 
-/* ═══════════════════════════════════════════════════════
+/* ════════════════════════════════════════════════════════════════════
+   3D DEPTH UTILITIES — CSS perspective transforms
+════════════════════════════════════════════════════════════════════ */
+.depth-card {
+  transform: perspective(800px) rotateX(0deg) rotateY(0deg);
+  transition: transform var(--motion-normal) var(--ease-out),
+              box-shadow var(--motion-normal) var(--ease-out);
+  will-change: transform;
+}
+.depth-card:hover {
+  transform: perspective(800px) rotateX(-2deg) rotateY(2deg) translateZ(8px);
+  box-shadow: var(--shadow-lg), var(--glow-teal);
+}
+
+/* Floating media frame */
+.media-frame {
+  position: relative;
+  border-radius: var(--radius-media);
+  overflow: hidden;
+  background: var(--palette-obsidian);
+  box-shadow:
+    0 0 0 1px var(--border-teal),
+    var(--shadow-md);
+}
+.media-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,200,181,0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════════
    REDUCED MOTION
-═══════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -884,4 +1016,5 @@ textarea.u-input { min-height: 80px; resize: vertical; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .depth-card:hover { transform: none; }
 }
